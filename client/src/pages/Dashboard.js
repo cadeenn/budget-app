@@ -440,7 +440,7 @@ const Dashboard = () => {
               p: 2,
               display: 'flex',
               flexDirection: 'column',
-              height: 140,
+              height: 120,
               bgcolor: '#f5f5f5',
               position: 'relative',
               overflow: 'hidden',
@@ -466,7 +466,7 @@ const Dashboard = () => {
               p: 2,
               display: 'flex',
               flexDirection: 'column',
-              height: 140,
+              height: 120,
               bgcolor: '#e8f5e9',
               position: 'relative',
               overflow: 'hidden',
@@ -476,15 +476,15 @@ const Dashboard = () => {
               <IncomeIcon sx={{ fontSize: 100 }} />
             </Box>
             <Typography component="h2" variant="h6" color="success.main" gutterBottom>
-              Monthly Income
+              Income
             </Typography>
             <Typography component="p" variant="h4">
               ${summaryData.income.toFixed(2)}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <ArrowUpIcon color="success" />
+              
               <Typography color="success.main" sx={{ ml: 1 }}>
-                8.2% from last month
+                
               </Typography>
             </Box>
           </Paper>
@@ -495,7 +495,7 @@ const Dashboard = () => {
               p: 2,
               display: 'flex',
               flexDirection: 'column',
-              height: 140,
+              height: 120,
               bgcolor: '#ffebee',
               position: 'relative',
               overflow: 'hidden',
@@ -505,15 +505,15 @@ const Dashboard = () => {
               <ExpenseIcon sx={{ fontSize: 100 }} />
             </Box>
             <Typography component="h2" variant="h6" color="error.main" gutterBottom>
-              Monthly Expenses
+              Expenses
             </Typography>
             <Typography component="p" variant="h4">
               ${summaryData.expenses.toFixed(2)}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <ArrowDownIcon color="error" />
+              
               <Typography color="error.main" sx={{ ml: 1 }}>
-                3.5% from last month
+                
               </Typography>
             </Box>
           </Paper>
