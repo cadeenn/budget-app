@@ -1,164 +1,159 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { API_URL } from '../utils/config';
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import { authAPI } from '../services/api';
+import { Alert } from 'react-native';
 
-const AuthContext = createContext();
+// Create context
+export const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
-
+// AuthProvider component
 export const AuthProvider = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [userToken, setUserToken] = useState(null);
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  // Initialize auth state from AsyncStorage
+  // Check if token exists when app loads
   useEffect(() => {
-    const loadToken = async () => {
+    const bootstrapAsync = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem('token');
-        if (storedToken) {
-          setToken(storedToken);
-          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        const token = await SecureStore.getItemAsync('userToken');
+        if (token) {
+          setUserToken(token);
+          try {
+            const { data } = await authAPI.getProfile();
+            setUser(data);
+          } catch (profileError) {
+            console.error('Failed to load user profile', profileError);
+            // Token might be invalid or expired
+            await SecureStore.deleteItemAsync('userToken');
+            setUserToken(null);
+          }
         }
-      } catch (err) {
-        console.error('Error loading token from AsyncStorage:', err);
+      } catch (e) {
+        console.error('Failed to load token or user data', e);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    loadToken();
+    bootstrapAsync();
   }, []);
 
-  // Load user data when token changes
-  useEffect(() => {
-    const loadUser = async () => {
-      if (!token) {
-        setIsAuthenticated(false);
-        setUser(null);
-        return;
+  // Login function
+  const login = async (email, password) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      console.log('Attempting login with:', { email });
+      const { data } = await authAPI.login({ email, password });
+      console.log('Login response:', data);
+      
+      if (data && data.token) {
+        await SecureStore.setItemAsync('userToken', data.token);
+        setUserToken(data.token);
+        setUser(data.user);
+        return true;
+      } else {
+        setError('Invalid login response. Please try again.');
+        console.error('Invalid login response:', data);
+        return false;
       }
-
-      try {
-        const response = await axios.get(`${API_URL}/api/auth/me`);
-        setUser(response.data);
-        setIsAuthenticated(true);
-      } catch (err) {
-        console.error('Error loading user:', err);
-        await AsyncStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        setError('Session expired. Please login again.');
+    } catch (error) {
+      console.error('Login error:', error);
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.status === 'network_error') {
+        errorMessage = 'Network error. Please check your connection.';
       }
-    };
+      
+      setError(errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    loadUser();
-  }, [token]);
-
-  // Register user
+  // Register function
   const register = async (userData) => {
+    setIsLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      setError(null);
+      console.log('Attempting registration with:', { email: userData.email });
+      const { data } = await authAPI.register(userData);
+      console.log('Registration response:', data);
       
-      const response = await axios.post(`${API_URL}/api/auth/register`, userData);
-      const { token: newToken, user: newUser } = response.data;
+      if (data && data.token) {
+        await SecureStore.setItemAsync('userToken', data.token);
+        setUserToken(data.token);
+        setUser(data.user);
+        return true;
+      } else {
+        setError('Invalid registration response. Please try again.');
+        console.error('Invalid registration response:', data);
+        return false;
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      let errorMessage = 'Registration failed. Please try again.';
       
-      await AsyncStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.status === 'network_error') {
+        errorMessage = 'Network error. Please check your connection.';
+      }
       
-      setToken(newToken);
-      setUser(newUser);
-      setIsAuthenticated(true);
-      
-      return newUser;
-    } catch (err) {
-      const message = err.response?.data?.message || 'Registration failed';
-      setError(message);
-      throw new Error(message);
+      setError(errorMessage);
+      return false;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Login user
-  const login = async (credentials) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await axios.post(`${API_URL}/api/auth/login`, credentials);
-      const { token: newToken, user: newUser } = response.data;
-      
-      await AsyncStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-      
-      setToken(newToken);
-      setUser(newUser);
-      setIsAuthenticated(true);
-      
-      return newUser;
-    } catch (err) {
-      const message = err.response?.data?.message || 'Login failed';
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Logout user
+  // Logout function
   const logout = async () => {
+    setIsLoading(true);
     try {
-      await AsyncStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-      
-      setToken(null);
+      await SecureStore.deleteItemAsync('userToken');
+      setUserToken(null);
       setUser(null);
-      setIsAuthenticated(false);
-    } catch (err) {
-      console.error('Error during logout:', err);
-    }
-  };
-
-  // Update user profile
-  const updateProfile = async (userData) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await axios.put(`${API_URL}/api/users/profile`, userData);
-      setUser(response.data);
-      
-      return response.data;
-    } catch (err) {
-      const message = err.response?.data?.message || 'Profile update failed';
-      setError(message);
-      throw new Error(message);
+    } catch (error) {
+      console.error('Logout error', error);
+      Alert.alert('Logout Error', 'Could not log out properly. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Clear error
-  const clearError = () => setError(null);
-
-  const value = {
+  // Context value
+  const authContext = {
+    isLoading,
+    userToken,
     user,
-    token,
-    isAuthenticated,
-    loading,
     error,
-    register,
     login,
+    register,
     logout,
-    updateProfile,
-    clearError
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={authContext}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Custom hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }; 

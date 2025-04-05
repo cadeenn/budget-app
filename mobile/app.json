@@ -1,13 +1,15 @@
 {
   "expo": {
     "name": "Budget Tracker",
-    "slug": "budget-tracker-mobile",
+    "slug": "budget-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#5064E3"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -17,18 +19,25 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#5064E3"
       }
     },
-    "web": {},
-    "runtimeVersion": {
-      "policy": "appVersion"
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      "expo-secure-store"
+    ],
     "extra": {
       "eas": {
-        "projectId": "3f00eeb1-40aa-4d08-b653-35c033e25192"
+        "projectId": "your-project-id"
       }
     },
-    "owner": "cadeenn"
+    "owner": "your-expo-username",
+    "packagerOpts": {
+      "hostType": "tunnel",
+      "lanType": "ip"
+    }
   }
 }
