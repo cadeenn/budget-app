@@ -3,28 +3,31 @@ const router = express.Router();
 const budgetController = require('../controllers/budget.controller');
 const auth = require('../middleware/auth');
 
-// All routes require authentication
+// All
 router.use(auth);
 
-// GET /api/budgets - Get all budgets for a user
+// GET
 router.get('/', budgetController.getBudgets);
 
-// GET /api/budgets/progress - Get progress for all active budgets
+// GET
+router.get('/selectable', budgetController.getSelectableBudgets); 
+
+// GET
 router.get('/progress', budgetController.getAllBudgetsProgress);
 
-// GET /api/budgets/:id - Get a single budget by ID
+// GET
 router.get('/:id', budgetController.getBudgetById);
 
-// GET /api/budgets/:id/progress - Get progress for a specific budget
+// GET
 router.get('/:id/progress', budgetController.getBudgetProgress);
 
-// POST /api/budgets - Create a new budget
+// POST
 router.post('/', budgetController.createBudget);
 
-// PUT /api/budgets/:id - Update a budget
+// PUT
 router.put('/:id', budgetController.updateBudget);
 
-// DELETE /api/budgets/:id - Delete a budget
+// DELETE
 router.delete('/:id', budgetController.deleteBudget);
 
-module.exports = router; 
+module.exports = router;

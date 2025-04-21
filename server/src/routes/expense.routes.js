@@ -1,63 +1,71 @@
 const express = require('express');
 const { check } = require('express-validator');
 const expenseController = require('../controllers/expense.controller');
-const auth = require('../middleware/auth.middleware');
+const auth = require('../middleware/auth.middleware'); 
 
 const router = express.Router();
 
-// All routes require authentication
+// All 
 router.use(auth);
 
-// @route   GET /api/expenses
-// @desc    Get all expenses for the current user
-// @access  Private
+// GET 
 router.get('/', expenseController.getExpenses);
 
-// @route   GET /api/expenses/stats
-// @desc    Get expense statistics
-// @access  Private
+// GET 
 router.get('/stats', expenseController.getExpenseStats);
 
-// @route   GET /api/expenses/:id
-// @desc    Get expense by ID
-// @access  Private
+// GET 
 router.get('/:id', expenseController.getExpenseById);
 
-// @route   POST /api/expenses
-// @desc    Create a new expense
-// @access  Private
+// POST 
 router.post(
   '/',
   [
     check('amount', 'Amount is required and must be a positive number')
       .isNumeric()
-      .custom(value => value > 0),
-    check('description', 'Description is required').not().isEmpty(),
-    check('category', 'Category is required').isMongoId()
+      .custom(value => parseFloat(value) > 0),
+    check('description', 'Description is required').not().isEmpty().trim(),
+    check('category', 'Category must be a valid ID if provided')
+        .optional({ checkFalsy: true }) 
+        .isMongoId(),
+    check('date', 'Date must be a valid ISO 8601 date').optional({ checkFalsy: true }).isISO8601().toDate(),
+    // Validate budgetId is provided and is MongoID
+    check('budgetId', 'Budget must be selected')
+        .not().isEmpty() 
+        .withMessage('Budget selection is required.')
+        .isMongoId() 
+        .withMessage('Invalid Budget ID format.')
   ],
-  expenseController.createExpense
+  expenseController.createExpense 
 );
 
-// @route   PUT /api/expenses/:id
-// @desc    Update an expense
-// @access  Private
+// PUT
 router.put(
   '/:id',
   [
+    // Keep existing validation, add budgetId check if needed for updates
     check('amount', 'Amount must be a positive number if provided')
       .optional()
       .isNumeric()
-      .custom(value => value > 0),
-    check('category', 'Category must be a valid ID if provided')
+      .custom(value => parseFloat(value) > 0),
+    check('description', 'Description cannot be empty if provided')
       .optional()
+      .not().isEmpty().trim(),
+    check('category', 'Category must be a valid ID if provided')
+      .optional({ checkFalsy: true })
+      .isMongoId(),
+    check('date', 'Date must be a valid date if provided')
+      .optional({ checkFalsy: true })
+      .isISO8601().toDate(),
+    // Validate budgetId if provided during update
+    check('budgetId', 'Budget must be a valid ID if provided')
+      .optional({ checkFalsy: true }) 
       .isMongoId()
   ],
-  expenseController.updateExpense
+  expenseController.updateExpense 
 );
 
-// @route   DELETE /api/expenses/:id
-// @desc    Delete an expense
-// @access  Private
+// DELETE
 router.delete('/:id', expenseController.deleteExpense);
 
-module.exports = router; 
+module.exports = router;

@@ -19,12 +19,17 @@ const expenseSchema = new mongoose.Schema({
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
-    required: true
+    required: false 
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  budget: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Budget',
+    required: false 
   },
   paymentMethod: {
     type: String,
@@ -47,6 +52,11 @@ const expenseSchema = new mongoose.Schema({
     enum: ['daily', 'weekly', 'monthly', 'yearly', null],
     default: null
   },
+  notes: { // Added notes field if it wasn't implicitly there via req.body
+    type: String,
+    trim: true,
+    default: ''
+  },
   tags: [{
     type: String,
     trim: true
@@ -58,7 +68,8 @@ const expenseSchema = new mongoose.Schema({
 // Create indexes for common queries
 expenseSchema.index({ user: 1, date: -1 });
 expenseSchema.index({ category: 1, user: 1 });
+expenseSchema.index({ budget: 1, user: 1 });
 
 const Expense = mongoose.model('Expense', expenseSchema);
 
-module.exports = Expense; 
+module.exports = Expense;
