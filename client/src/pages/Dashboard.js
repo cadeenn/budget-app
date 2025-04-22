@@ -618,7 +618,7 @@ const Dashboard = () => {
                           color: transaction.type === 'income' ? 'success.main' : 'error.main' 
                         }}
                       >
-                        {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                        {transaction.type === 'income' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
                       </Typography>
                     </ListItem>
                     <Divider variant="inset" component="li" />
