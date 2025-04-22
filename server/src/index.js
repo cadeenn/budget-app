@@ -29,7 +29,7 @@ app.use(morgan('dev'));
 
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://caden:caden@budget-tracker.nnehz.mongodb.net/?retryWrites=true&w=majority&appName=Budget-Tracker', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/budget-trackerr', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
