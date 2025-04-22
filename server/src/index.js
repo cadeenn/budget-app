@@ -27,8 +27,9 @@ app.use(cors({
 app.use(express.json());
 app.use(morgan('dev'));
 
+
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/budget-tracker', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://caden:caden@budget-tracker.nnehz.mongodb.net/?retryWrites=true&w=majority&appName=Budget-Tracker', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -37,6 +38,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/budget-tr
   console.error('MongoDB connection error:', err);
   console.log('Running in development mode without database connection');
 });
+
 
 // Routes
 app.use('/api/auth', authRoutes);
