@@ -26,16 +26,16 @@ import { Save as SaveIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-materia
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const AddExpense = () => {
+const AddExpense = ({ handleClose }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
-    category: '',
+    budget: '',
     date: new Date(),
     isRecurring: false,
     recurringFrequency: 'monthly',
@@ -44,37 +44,41 @@ const AddExpense = () => {
   const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchBudgets = async () => {
       try {
-        const response = await axios.get('/api/categories');
-        setCategories(response.data.categories || []);
-        
-        // Set default category if available
-        if (response.data.categories && response.data.categories.length > 0) {
+        const response = await axios.get('/api/budgets');
+        console.log('Budget API response:', response.data);
+
+        const budgetList = Array.isArray(response.data)
+          ? response.data
+          : response.data.budgets || [];
+
+        setBudgets(budgetList);
+
+        if (budgetList.length > 0) {
           setFormData(prev => ({
             ...prev,
-            category: response.data.categories[0]._id
+            budget: budgetList[0]._id
           }));
         }
       } catch (err) {
-        console.error('Error fetching categories:', err);
-        setError('Failed to load categories. Please try again later.');
+        console.error('Error fetching budgets:', err);
+        setError('Failed to load budgets. Please try again later.');
       }
     };
 
-    fetchCategories();
+    fetchBudgets();
   }, []);
 
   const handleChange = (e) => {
     const { name, value, checked } = e.target;
     const newValue = name === 'isRecurring' ? checked : value;
-    
+
     setFormData({
       ...formData,
       [name]: newValue
     });
-    
-    // Clear error for this field
+
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
@@ -88,8 +92,7 @@ const AddExpense = () => {
       ...formData,
       date
     });
-    
-    // Clear date error
+
     if (formErrors.date) {
       setFormErrors({
         ...formErrors,
@@ -100,58 +103,62 @@ const AddExpense = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.amount || isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
       errors.amount = 'Please enter a valid amount greater than 0';
     }
-    
+
     if (!formData.description.trim()) {
       errors.description = 'Description is required';
     }
-    
-    if (!formData.category) {
-      errors.category = 'Please select a category';
+
+    if (!formData.budget) {
+      errors.budget = 'Please select a budget';
     }
-    
+
     if (!formData.date) {
       errors.date = 'Please select a date';
     }
-    
+
     if (formData.isRecurring && !formData.recurringFrequency) {
       errors.recurringFrequency = 'Please select a frequency for recurring expense';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
+  
     try {
-      setLoading(true);
-      setError(null);
-      
+      console.log("Sending expense data:", formData);
+  
+      // Make sure you're sending 'budget' instead of 'category'
       const response = await axios.post('/api/expenses', {
-        amount: parseFloat(formData.amount),
+        amount: formData.amount,
         description: formData.description,
-        category: formData.category,
+        budget: formData.budget,  // Changed to 'budget' instead of 'category'
         date: formData.date,
         isRecurring: formData.isRecurring,
         recurringFrequency: formData.isRecurring ? formData.recurringFrequency : null,
         notes: formData.notes
       });
-      
-      setLoading(false);
-      navigate('/expenses');
+  
+      console.log("Expense added:", response.data);
+      handleClose();
+      setFormData({
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+        budget: budgets[0]?._id || '',
+        isRecurring: false,
+        recurringFrequency: 'monthly',
+        notes: ''
+      });
     } catch (err) {
-      console.error('Error adding expense:', err);
+      console.error("Failed to add expense:", err.response?.data || err.message);
       setError('Failed to add expense. Please try again.');
-      setLoading(false);
     }
   };
 
@@ -170,15 +177,15 @@ const AddExpense = () => {
             Add New Expense
           </Typography>
         </Box>
-        
+
         <Divider sx={{ mb: 3 }} />
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
@@ -200,7 +207,7 @@ const AddExpense = () => {
                 helperText={formErrors.amount}
               />
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
@@ -219,7 +226,7 @@ const AddExpense = () => {
                 />
               </LocalizationProvider>
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 label="Description"
@@ -232,30 +239,30 @@ const AddExpense = () => {
                 helperText={formErrors.description}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
-              <FormControl fullWidth required error={!!formErrors.category}>
-                <InputLabel>Category</InputLabel>
+              <FormControl fullWidth required error={!!formErrors.budget}>
+                <InputLabel>Budget</InputLabel>
                 <Select
-                  name="category"
-                  value={formData.category}
+                  name="budget"
+                  value={formData.budget}
                   onChange={handleChange}
-                  label="Category"
+                  label="Budget"
                 >
-                  {categories.map(category => (
-                    <MenuItem key={category._id} value={category._id}>
-                      {category.name}
+                  {budgets.map(budget => (
+                    <MenuItem key={budget._id} value={budget._id}>
+                      {budget.name}
                     </MenuItem>
                   ))}
                 </Select>
-                {formErrors.category && (
+                {formErrors.budget && (
                   <Typography variant="caption" color="error">
-                    {formErrors.category}
+                    {formErrors.budget}
                   </Typography>
                 )}
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12}>
               <FormControlLabel
                 control={
@@ -269,7 +276,7 @@ const AddExpense = () => {
                 label="This is a recurring expense"
               />
             </Grid>
-            
+
             {formData.isRecurring && (
               <Grid item xs={12}>
                 <FormControl fullWidth required error={!!formErrors.recurringFrequency}>
@@ -293,7 +300,7 @@ const AddExpense = () => {
                 </FormControl>
               </Grid>
             )}
-            
+
             <Grid item xs={12}>
               <TextField
                 label="Notes (Optional)"
@@ -305,7 +312,7 @@ const AddExpense = () => {
                 rows={3}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
@@ -334,4 +341,4 @@ const AddExpense = () => {
   );
 };
 
-export default AddExpense; 
+export default AddExpense;
