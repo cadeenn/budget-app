@@ -324,7 +324,7 @@ const BudgetList = () => {
                 <TableCell align="right">Amount</TableCell>
                 <TableCell>Progress</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell align="center">Info</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

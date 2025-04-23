@@ -457,7 +457,7 @@ const ExpenseList = () => {
                 <TableCell>Description</TableCell>
                 <TableCell>Category</TableCell>
                 <TableCell align="right">Amount</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell align="center">Info</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -494,7 +494,7 @@ const ExpenseList = () => {
                       />
                     </TableCell>
                     <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'medium' }}>
-                      ${expense.amount.toFixed(2)}
+                      {`-$${Math.abs(expense.amount).toFixed(2)}`}
                     </TableCell>
                     <TableCell align="center" sx={{ display: 'flex', justifyContent: 'center' }}>
                       <IconButton
