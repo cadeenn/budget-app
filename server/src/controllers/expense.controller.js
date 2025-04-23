@@ -107,6 +107,7 @@ exports.createExpense = async (req, res) => {
       date,
       category,
       location,
+      budget,
       receipt,
       isRecurring,
       recurringFrequency,
