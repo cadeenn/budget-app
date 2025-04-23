@@ -26,11 +26,6 @@ const expenseSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  paymentMethod: {
-    type: String,
-    enum: ['cash', 'credit card', 'debit card', 'bank transfer', 'other'],
-    default: 'cash'
-  },
   location: {
     type: String,
     trim: true
