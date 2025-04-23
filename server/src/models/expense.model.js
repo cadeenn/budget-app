@@ -16,9 +16,9 @@ const expenseSchema = new mongoose.Schema({
     required: true,
     default: Date.now
   },
-  category: {
+  budget: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
+    ref: 'Budget',
     required: true
   },
   user: {
@@ -57,8 +57,8 @@ const expenseSchema = new mongoose.Schema({
 
 // Create indexes for common queries
 expenseSchema.index({ user: 1, date: -1 });
-expenseSchema.index({ category: 1, user: 1 });
+expenseSchema.index({ budget: 1, user: 1 });
 
 const Expense = mongoose.model('Expense', expenseSchema);
 
-module.exports = Expense; 
+module.exports = Expense;
