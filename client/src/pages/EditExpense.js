@@ -183,7 +183,7 @@ const EditExpense = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Button
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/expenses/${id}`)}
+            onClick={() => navigate('/expenses')}
             sx={{ mr: 2 }}
           >
             Back

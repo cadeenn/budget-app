@@ -91,7 +91,6 @@ const BudgetList = () => {
         if (filters.search) params.search = filters.search;
 
         const response = await axios.get('/api/budgets', { params });
-        
         setBudgets(response.data.budgets);
         setPagination({
           ...pagination,
@@ -383,30 +382,13 @@ const BudgetList = () => {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" sx={{ display: 'flex', justifyContent: 'center' }}>
                       <IconButton
                         component={RouterLink}
                         to={`/budgets/${budget._id}`}
                         size="small"
-                        sx={{ mr: 1 }}
                       >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        component={RouterLink}
-                        to={`/budgets/${budget._id}/edit`}
-                        size="small"
-                        color="primary"
-                        sx={{ mr: 1 }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleDeleteBudget(budget._id)}
-                        size="small"
-                        color="error"
-                      >
-                        <DeleteIcon />
+                        <SearchIcon />
                       </IconButton>
                     </TableCell>
                   </TableRow>
