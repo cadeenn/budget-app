@@ -10,7 +10,7 @@ exports.getAllCategories = async (req, res) => {
   try {
     const categories = await Category.find({ user: req.user._id });
     
-        res.json(categories);
+        res.json({categories});
   } catch (error) {
     console.error('Get categories error:', error);
     res.status(500).json({ message: 'Server error' });
