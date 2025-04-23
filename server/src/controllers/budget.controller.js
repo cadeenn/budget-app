@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 // Get all budgets for a user
 exports.getBudgets = async (req, res) => {
   try {
-    const { isActive, category, period, sort = '-createdAt', page = 1, limit = 10 } = req.query;
+    const { isActive, category, period, sort = '-createdAt', page = 1, limit = 10, search } = req.query;
     
     const query = { user: req.user.id };
     
@@ -21,6 +21,14 @@ exports.getBudgets = async (req, res) => {
     
     if (period) {
       query.period = period;
+    }
+
+    // Add search filter if provided
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } }, // Search in budget name
+        { notes: { $regex: search, $options: 'i' } } // Search in notes
+      ];
     }
     
     // Count total documents

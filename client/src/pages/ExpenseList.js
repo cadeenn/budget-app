@@ -84,7 +84,7 @@ const ExpenseList = () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get('/api/categories');
-        setCategories(response.data);
+        setCategories(response.data.categories || []);
       } catch (err) {
         console.error('Error fetching categories:', err);
       }
@@ -347,11 +347,12 @@ const ExpenseList = () => {
                     label="Category"
                   >
                     <MenuItem value="">All Categories</MenuItem>
-                    {categories.map(category => (
-                      <MenuItem key={category._id} value={category._id}>
-                        {category.name}
-                      </MenuItem>
-                    ))}
+                    {Array.isArray(categories) && categories.map(category => (
+  <MenuItem key={category._id} value={category._id}>
+    {category.name}
+  </MenuItem>
+))}
+
                   </Select>
                 </FormControl>
               </Grid>
@@ -456,7 +457,7 @@ const ExpenseList = () => {
                 <TableCell>Description</TableCell>
                 <TableCell>Category</TableCell>
                 <TableCell align="right">Amount</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell align="center">Info</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -493,7 +494,7 @@ const ExpenseList = () => {
                       />
                     </TableCell>
                     <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'medium' }}>
-                      ${expense.amount.toFixed(2)}
+                      {`-$${Math.abs(expense.amount).toFixed(2)}`}
                     </TableCell>
                     <TableCell align="center" sx={{ display: 'flex', justifyContent: 'center' }}>
                       <IconButton

@@ -8,31 +8,51 @@ const Income = require('../models/income.model');
  */
 exports.getIncomes = async (req, res) => {
   try {
-    const { startDate, endDate, sort = '-date' } = req.query;
-    
+    const { startDate, endDate, sort = '-date', source, minAmount, maxAmount, search } = req.query;
+
     // Build filter object
     const filter = { user: req.user._id };
-    
+
     // Add date range filter if provided
     if (startDate || endDate) {
       filter.date = {};
       if (startDate) filter.date.$gte = new Date(startDate);
       if (endDate) filter.date.$lte = new Date(endDate);
     }
-    
+
+    // Add source filter if provided
+    if (source) {
+      filter.source = { $regex: source, $options: 'i' }; // Case-insensitive match
+    }
+
+    // Add amount range filter if provided
+    if (minAmount || maxAmount) {
+      filter.amount = {};
+      if (minAmount) filter.amount.$gte = parseFloat(minAmount);
+      if (maxAmount) filter.amount.$lte = parseFloat(maxAmount);
+    }
+
+    // Add search filter if provided
+    if (search) {
+      filter.$or = [
+        { source: { $regex: search, $options: 'i' } }, // Search in source
+        { description: { $regex: search, $options: 'i' } } // Search in description
+      ];
+    }
+
     // Execute query with pagination
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    
+
     const incomes = await Income.find(filter)
       .sort(sort)
       .skip(skip)
       .limit(limit);
-    
+
     // Get total count for pagination
     const total = await Income.countDocuments(filter);
-    
+
     res.json({
       incomes,
       pagination: {
@@ -47,7 +67,6 @@ exports.getIncomes = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 /**
  * Get income by ID
  * @route GET /api/incomes/:id
