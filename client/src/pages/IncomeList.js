@@ -36,15 +36,21 @@ import {
   Visibility as VisibilityIcon,
   TrendingUp as IncomeIcon
 } from '@mui/icons-material';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+
+// Register ChartJS components
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const IncomeList = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [incomes, setIncomes] = useState([]);
+  const [incomeBySource, setIncomeBySource] = useState([]);
   const [pagination, setPagination] = useState({
     page: 0,
     limit: 10,
@@ -97,6 +103,19 @@ const IncomeList = () => {
 
     fetchIncomes();
   }, [pagination.page, pagination.limit, filters]);
+
+  useEffect(() => {
+    const fetchIncomeStats = async () => {
+      try {
+        const response = await axios.get('/api/incomes/stats');
+        setIncomeBySource(response.data.bySource || []);
+      } catch (err) {
+        console.error('Error fetching income stats:', err);
+      }
+    };
+
+    fetchIncomeStats();
+  }, []);
 
   const handleChangePage = (event, newPage) => {
     setPagination({
@@ -154,6 +173,31 @@ const IncomeList = () => {
         alert('Failed to delete income. Please try again.');
       }
     }
+  };
+
+  const preparePieChartData = () => {
+    const labels = incomeBySource.map(item => item._id);
+    const data = incomeBySource.map(item => item.total);
+    const backgroundColors = [
+      '#FF6384',
+      '#36A2EB',
+      '#FFCE56',
+      '#4BC0C0',
+      '#9966FF',
+      '#FF9F40'
+    ];
+
+    return {
+      labels,
+      datasets: [
+        {
+          data,
+          backgroundColor: backgroundColors,
+          borderColor: '#fff',
+          borderWidth: 1
+        }
+      ]
+    };
   };
 
   if (loading && incomes.length === 0) {
@@ -283,6 +327,38 @@ const IncomeList = () => {
         </Paper>
       )}
 
+      {/* Add Pie Chart */}
+      {incomeBySource.length > 0 && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Income Distribution by Source
+          </Typography>
+          <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
+            <Pie 
+              data={preparePieChartData()}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'right'
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        const label = context.label || '';
+                        const value = context.raw || 0;
+                        return `${label}: $${value.toFixed(2)}`;
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </Box>
+        </Paper>
+      )}
+
       <Paper>
         <TableContainer>
           <Table>
@@ -322,30 +398,13 @@ const IncomeList = () => {
                     <TableCell align="right" sx={{ color: 'success.main', fontWeight: 'bold' }}>
                       ${income.amount.toFixed(2)}
                     </TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" sx={{ display: 'flex', justifyContent: 'center' }}>
                       <IconButton
                         component={RouterLink}
                         to={`/incomes/${income._id}`}
                         size="small"
-                        sx={{ mr: 1 }}
                       >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        component={RouterLink}
-                        to={`/incomes/${income._id}/edit`}
-                        size="small"
-                        color="primary"
-                        sx={{ mr: 1 }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleDeleteIncome(income._id)}
-                        size="small"
-                        color="error"
-                      >
-                        <DeleteIcon />
+                        <SearchIcon />
                       </IconButton>
                     </TableCell>
                   </TableRow>
