@@ -47,6 +47,7 @@ import {
   ShoppingCart as ShoppingIcon,
   Repeat as RepeatIcon
 } from '@mui/icons-material';
+
 import {
   Chart as ChartJS,
   ArcElement,
@@ -780,9 +781,9 @@ const Dashboard = () => {
                             fontWeight: 'bold', 
                             color: transaction.type === 'income' ? 'success.main' : 'error.main' 
                         }}
-                        >
+                      >
                         {transaction.amount > 0 ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
-                        </Typography>
+                      </Typography>
                     </ListItem>
                     <Divider variant="inset" component="li" />
                     </React.Fragment>
