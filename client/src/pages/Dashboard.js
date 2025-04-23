@@ -574,17 +574,7 @@ const Dashboard = () => {
               Dashboard
             </Typography>
             <Box>
-              <IconButton onClick={handleMenuClick}>
-                <MoreIcon />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleMenuClose}
-              >
-                <MenuItem onClick={handleMenuClose}>Refresh Data</MenuItem>
-                <MenuItem onClick={handleMenuClose}>Export Report</MenuItem>
-              </Menu>
+
             </Box>
           </Box>
           <Divider />
