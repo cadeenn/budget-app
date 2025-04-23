@@ -278,26 +278,6 @@ const ExpenseDetail = () => {
               )}
             </List>
           </Grid>
-          
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => navigate('/expenses')}
-              >
-                Back to Expenses
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                component={RouterLink}
-                to={`/expenses/${id}/edit`}
-              >
-                Edit Expense
-              </Button>
-            </Box>
-          </Grid>
         </Grid>
       </Paper>
     </Container>

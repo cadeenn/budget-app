@@ -279,27 +279,6 @@ const IncomeDetail = () => {
               )}
             </List>
           </Grid>
-          
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => navigate('/incomes')}
-              >
-                Back to Income
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<EditIcon />}
-                component={RouterLink}
-                to={`/incomes/${id}/edit`}
-                color="primary"
-              >
-                Edit Income
-              </Button>
-            </Box>
-          </Grid>
         </Grid>
       </Paper>
     </Container>

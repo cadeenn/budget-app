@@ -398,30 +398,13 @@ const IncomeList = () => {
                     <TableCell align="right" sx={{ color: 'success.main', fontWeight: 'bold' }}>
                       ${income.amount.toFixed(2)}
                     </TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" sx={{ display: 'flex', justifyContent: 'center' }}>
                       <IconButton
                         component={RouterLink}
                         to={`/incomes/${income._id}`}
                         size="small"
-                        sx={{ mr: 1 }}
                       >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        component={RouterLink}
-                        to={`/incomes/${income._id}/edit`}
-                        size="small"
-                        color="primary"
-                        sx={{ mr: 1 }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleDeleteIncome(income._id)}
-                        size="small"
-                        color="error"
-                      >
-                        <DeleteIcon />
+                        <SearchIcon />
                       </IconButton>
                     </TableCell>
                   </TableRow>
