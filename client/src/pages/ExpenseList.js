@@ -84,7 +84,7 @@ const ExpenseList = () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get('/api/categories');
-        setCategories(response.data);
+        setCategories(response.data.categories || []);
       } catch (err) {
         console.error('Error fetching categories:', err);
       }
@@ -347,11 +347,12 @@ const ExpenseList = () => {
                     label="Category"
                   >
                     <MenuItem value="">All Categories</MenuItem>
-                    {categories.map(category => (
-                      <MenuItem key={category._id} value={category._id}>
-                        {category.name}
-                      </MenuItem>
-                    ))}
+                    {Array.isArray(categories) && categories.map(category => (
+  <MenuItem key={category._id} value={category._id}>
+    {category.name}
+  </MenuItem>
+))}
+
                   </Select>
                 </FormControl>
               </Grid>
