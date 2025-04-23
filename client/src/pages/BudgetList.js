@@ -90,11 +90,34 @@ const BudgetList = () => {
         if (filters.period) params.period = filters.period;
         if (filters.search) params.search = filters.search;
 
-        const response = await axios.get('/api/budgets', { params });
-        setBudgets(response.data.budgets);
+        // First get the progress data for all budgets (only active ones)
+        const progressResponse = await axios.get('/api/budgets/progress');
+        
+        // Then get the regular paginated budget list with filters
+        const budgetsResponse = await axios.get('/api/budgets', { params });
+        
+        // Create a map of budget progress data by budget ID
+        const progressMap = {};
+        if (Array.isArray(progressResponse.data)) {
+          progressResponse.data.forEach(item => {
+            if (item.budget && item.budget._id && item.progress) {
+              progressMap[item.budget._id] = item.progress;
+            }
+          });
+        }
+        
+        // Add progress data to each budget
+        const budgetsWithProgress = budgetsResponse.data.budgets.map(budget => {
+          return {
+            ...budget,
+            progress: progressMap[budget._id] || { percentageSpent: 0, totalSpent: 0, remaining: budget.amount, isOverBudget: false }
+          };
+        });
+        
+        setBudgets(budgetsWithProgress);
         setPagination({
           ...pagination,
-          total: response.data.pagination.total
+          total: budgetsResponse.data.pagination.total
         });
       } catch (err) {
         console.error('Error fetching budgets:', err);
