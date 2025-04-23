@@ -208,7 +208,7 @@ const EditBudget = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Button
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/budgets/${id}`)}
+            onClick={() => navigate(`/budgets`)}
             sx={{ mr: 2 }}
           >
             Back

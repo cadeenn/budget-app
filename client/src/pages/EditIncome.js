@@ -173,7 +173,7 @@ const EditIncome = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Button
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(`/incomes/${id}`)}
+            onClick={() => navigate('/incomes')}
             sx={{ mr: 2 }}
           >
             Back
