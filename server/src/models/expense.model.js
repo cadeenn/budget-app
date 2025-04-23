@@ -38,6 +38,10 @@ const expenseSchema = new mongoose.Schema({
   receipt: {
     type: String // URL to receipt image
   },
+  budget: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Budget'
+  },
   isRecurring: {
     type: Boolean,
     default: false

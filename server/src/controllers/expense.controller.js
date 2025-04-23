@@ -124,6 +124,18 @@ exports.createExpense = async (req, res) => {
       return res.status(400).json({ message: 'Invalid category' });
     }
     
+    //Verify if the budget exists and belongs to the user
+    if(budget) {
+      const budgetExists = await Budget.findOne({
+        _id: budget,
+        user: req.user._id
+      });
+      
+      if (!budgetExists) {
+        return res.status(400).json({ message: 'Budget does not exist' });
+      }
+    }
+
     // Create new expense
     const expense = new Expense({
       amount,
@@ -131,6 +143,7 @@ exports.createExpense = async (req, res) => {
       date: date || Date.now(),
       category,
       user: req.user._id,
+      budget,
       paymentMethod,
       location,
       receipt,
