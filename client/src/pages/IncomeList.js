@@ -39,8 +39,9 @@ import {
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+import { Tabs, Tab } from '@mui/material';
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -50,6 +51,7 @@ const IncomeList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [incomes, setIncomes] = useState([]);
+  const [timeRange, setTimeRange] = useState('month');
   const [incomeBySource, setIncomeBySource] = useState([]);
   const [pagination, setPagination] = useState({
     page: 0,
@@ -107,7 +109,32 @@ const IncomeList = () => {
   useEffect(() => {
     const fetchIncomeStats = async () => {
       try {
-        const response = await axios.get('/api/incomes/stats');
+        // Calculate date range based on selected time range
+        let startDate, endDate;
+        const now = new Date();
+        
+        switch (timeRange) {
+          case 'week':
+            startDate = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6), 'yyyy-MM-dd');
+            endDate = format(now, 'yyyy-MM-dd');
+            break;
+          case 'month':
+            startDate = format(startOfMonth(now), 'yyyy-MM-dd');
+            endDate = format(endOfMonth(now), 'yyyy-MM-dd');
+            break;
+          case 'year':
+            startDate = format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd');
+            endDate = format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd');
+            break;
+          default:
+            startDate = format(startOfMonth(now), 'yyyy-MM-dd');
+            endDate = format(endOfMonth(now), 'yyyy-MM-dd');
+        }
+
+
+        const response = await axios.get('/api/incomes/stats', {
+          params: { startDate, endDate }
+        });
         setIncomeBySource(response.data.bySource || []);
       } catch (err) {
         console.error('Error fetching income stats:', err);
@@ -115,7 +142,7 @@ const IncomeList = () => {
     };
 
     fetchIncomeStats();
-  }, []);
+  }, [timeRange]);
 
   const handleChangePage = (event, newPage) => {
     setPagination({
@@ -329,23 +356,33 @@ const IncomeList = () => {
 
       {/* Add Pie Chart */}
       {incomeBySource.length > 0 && (
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Income Distribution by Source
-          </Typography>
-          <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
+  <Paper sx={{ p: 2, mb: 3 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ width: '100%', maxWidth: '600px' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, display: 'flex', justifyContent: 'center' }}>
+          <Tabs value={timeRange} onChange={(_, newValue) => setTimeRange(newValue)} centered>
+            <Tab label="Week" value="week" />
+            <Tab label="Month" value="month" />
+            <Tab label="Year" value="year" />
+          </Tabs>
+        </Box>
+        <Typography component="h2" variant="h6" color="primary" gutterBottom align="center">
+          Income by Source
+        </Typography>
+        <Box sx={{ height: 300, position: 'relative', display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ width: '100%', maxWidth: '500px', height: '100%' }}>
             <Pie 
               data={preparePieChartData()}
               options={{
-                responsive: true,
                 maintainAspectRatio: false,
+                responsive: true,
                 plugins: {
                   legend: {
                     position: 'right'
                   },
                   tooltip: {
                     callbacks: {
-                      label: function(context) {
+                      label: function (context) {
                         const label = context.label || '';
                         const value = context.raw || 0;
                         return `${label}: $${value.toFixed(2)}`;
@@ -356,8 +393,12 @@ const IncomeList = () => {
               }}
             />
           </Box>
-        </Paper>
-      )}
+        </Box>
+      </Box>
+    </Box>
+  </Paper>
+)}
+
 
       <Paper>
         <TableContainer>
@@ -368,7 +409,7 @@ const IncomeList = () => {
                 <TableCell>Source</TableCell>
                 <TableCell>Description</TableCell>
                 <TableCell align="right">Amount</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell align="center">Info</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -396,7 +437,7 @@ const IncomeList = () => {
                     <TableCell>{income.source}</TableCell>
                     <TableCell>{income.description}</TableCell>
                     <TableCell align="right" sx={{ color: 'success.main', fontWeight: 'bold' }}>
-                      ${income.amount.toFixed(2)}
+                    {`+$${Math.abs(income.amount).toFixed(2)}`}
                     </TableCell>
                     <TableCell align="center" sx={{ display: 'flex', justifyContent: 'center' }}>
                       <IconButton
