@@ -33,8 +33,7 @@ router.post(
       .isNumeric()
       .custom(value => value > 0),
     check('description', 'Description is required').not().isEmpty(),
-    check('category', 'Category is required').isMongoId()
-  ],
+    check('budget', 'Budget is required').isMongoId()  ],
   expenseController.createExpense
 );
 
