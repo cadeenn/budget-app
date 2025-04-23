@@ -33,11 +33,11 @@ const EditExpense = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
-    category: '',
+    budget: '',
     date: new Date(),
     isRecurring: false,
     recurringFrequency: 'monthly',
@@ -50,19 +50,17 @@ const EditExpense = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Fetch categories
-        const categoriesResponse = await axios.get('/api/categories');
-        setCategories(categoriesResponse.data.categories || []);
-        
-        // Fetch expense details
+
+        const budgetsResponse = await axios.get('/api/budgets');
+        setBudgets(budgetsResponse.data.budgets || []);
+
         const expenseResponse = await axios.get(`/api/expenses/${id}`);
         const expense = expenseResponse.data;
-        
+
         setFormData({
           amount: expense.amount,
           description: expense.description,
-          category: expense.category ? expense.category._id : '',
+          budget: expense.budget ? expense.budget._id : '',
           date: new Date(expense.date),
           isRecurring: expense.isRecurring || false,
           recurringFrequency: expense.recurringFrequency || 'monthly',
@@ -82,13 +80,12 @@ const EditExpense = () => {
   const handleChange = (e) => {
     const { name, value, checked } = e.target;
     const newValue = name === 'isRecurring' ? checked : value;
-    
+
     setFormData({
       ...formData,
       [name]: newValue
     });
-    
-    // Clear error for this field
+
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
@@ -102,8 +99,7 @@ const EditExpense = () => {
       ...formData,
       date
     });
-    
-    // Clear date error
+
     if (formErrors.date) {
       setFormErrors({
         ...formErrors,
@@ -114,52 +110,52 @@ const EditExpense = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.amount || isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
       errors.amount = 'Please enter a valid amount greater than 0';
     }
-    
+
     if (!formData.description.trim()) {
       errors.description = 'Description is required';
     }
-    
-    if (!formData.category) {
-      errors.category = 'Please select a category';
+
+    if (!formData.budget) {
+      errors.budget = 'Please select a budget';
     }
-    
+
     if (!formData.date) {
       errors.date = 'Please select a date';
     }
-    
+
     if (formData.isRecurring && !formData.recurringFrequency) {
       errors.recurringFrequency = 'Please select a frequency for recurring expense';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       setSaving(true);
       setError(null);
-      
+
       await axios.put(`/api/expenses/${id}`, {
         amount: parseFloat(formData.amount),
         description: formData.description,
-        category: formData.category,
+        budget: formData.budget,
         date: formData.date,
         isRecurring: formData.isRecurring,
         recurringFrequency: formData.isRecurring ? formData.recurringFrequency : null,
         notes: formData.notes
       });
-      
+
       setSaving(false);
       navigate(`/expenses/${id}`);
     } catch (err) {
@@ -183,7 +179,7 @@ const EditExpense = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <Button
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/expenses')}
+            onClick={() => navigate(`/expenses/${id}`)}
             sx={{ mr: 2 }}
           >
             Back
@@ -192,15 +188,15 @@ const EditExpense = () => {
             Edit Expense
           </Typography>
         </Box>
-        
+
         <Divider sx={{ mb: 3 }} />
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
@@ -222,7 +218,7 @@ const EditExpense = () => {
                 helperText={formErrors.amount}
               />
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
@@ -241,7 +237,7 @@ const EditExpense = () => {
                 />
               </LocalizationProvider>
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 label="Description"
@@ -254,30 +250,30 @@ const EditExpense = () => {
                 helperText={formErrors.description}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
-              <FormControl fullWidth required error={!!formErrors.category}>
-                <InputLabel>Category</InputLabel>
+              <FormControl fullWidth required error={!!formErrors.budget}>
+                <InputLabel>Budget</InputLabel>
                 <Select
-                  name="category"
-                  value={formData.category}
+                  name="budget"
+                  value={formData.budget}
                   onChange={handleChange}
-                  label="Category"
+                  label="Budget"
                 >
-                  {categories.map(category => (
-                    <MenuItem key={category._id} value={category._id}>
-                      {category.name}
+                  {budgets.map(budget => (
+                    <MenuItem key={budget._id} value={budget._id}>
+                      {budget.name}
                     </MenuItem>
                   ))}
                 </Select>
-                {formErrors.category && (
+                {formErrors.budget && (
                   <Typography variant="caption" color="error">
-                    {formErrors.category}
+                    {formErrors.budget}
                   </Typography>
                 )}
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12}>
               <FormControlLabel
                 control={
@@ -291,7 +287,7 @@ const EditExpense = () => {
                 label="This is a recurring expense"
               />
             </Grid>
-            
+
             {formData.isRecurring && (
               <Grid item xs={12}>
                 <FormControl fullWidth required error={!!formErrors.recurringFrequency}>
@@ -315,7 +311,7 @@ const EditExpense = () => {
                 </FormControl>
               </Grid>
             )}
-            
+
             <Grid item xs={12}>
               <TextField
                 label="Notes (Optional)"
@@ -327,7 +323,7 @@ const EditExpense = () => {
                 rows={3}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
@@ -355,4 +351,4 @@ const EditExpense = () => {
   );
 };
 
-export default EditExpense; 
+export default EditExpense;
