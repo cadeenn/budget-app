@@ -99,40 +99,6 @@ const BudgetList = () => {
         if (filters.category) params.category = filters.category;
         if (filters.period) params.period = filters.period;
         if (filters.search) params.search = filters.search;
-<<<<<<< HEAD
-    
-        const response = await axios.get('/api/budgets', { params });
-        
-        // Check if budgets have progress data, if not, fetch it
-        let budgetsWithProgress = response.data.budgets;
-        
-        // If budgets don't have progress data, fetch it separately
-        if (budgetsWithProgress.length > 0 && !budgetsWithProgress[0].progress) {
-          const progressPromises = budgetsWithProgress.map(async (budget) => {
-            try {
-              const progressResponse = await axios.get(`/api/budgets/${budget._id}/progress`);
-              return {
-                ...budget,
-                progress: {
-                  percentageSpent: progressResponse.data.progress.percentageSpent,
-                  totalSpent: progressResponse.data.progress.totalSpent,
-                  remaining: progressResponse.data.progress.remaining,
-                  isOverBudget: progressResponse.data.progress.isOverBudget
-                }
-              };
-            } catch (err) {
-              console.error(`Error fetching progress for budget ${budget._id}:`, err);
-              return {
-                ...budget,
-                progress: { percentageSpent: 0, totalSpent: 0, remaining: budget.amount, isOverBudget: false }
-              };
-            }
-          });
-          
-          budgetsWithProgress = await Promise.all(progressPromises);
-        }
-        
-=======
 
         // First get the progress data for all budgets (only active ones)
         const progressResponse = await axios.get('/api/budgets/progress');
@@ -158,7 +124,6 @@ const BudgetList = () => {
           };
         });
         
->>>>>>> main
         setBudgets(budgetsWithProgress);
         setPagination({
           ...pagination,
