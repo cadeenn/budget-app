@@ -121,7 +121,7 @@ const Layout = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Budget Tracker'}
+          {menuItems.find(item => location.pathname.startsWith(item.path))?.text || 'Budget Tracker'}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {user && (
