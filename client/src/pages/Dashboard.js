@@ -47,11 +47,11 @@ import {
   ShoppingCart as ShoppingIcon,
   Repeat as RepeatIcon
 } from '@mui/icons-material';
-import { 
-  Chart as ChartJS, 
-  ArcElement, 
-  Tooltip, 
-  Legend, 
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
   CategoryScale,
   LinearScale,
   PointElement,
@@ -61,13 +61,29 @@ import {
 } from 'chart.js';
 import { Pie, Line } from 'react-chartjs-2';
 import axios from 'axios';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
-import { useAuth } from '../context/AuthContext';
+import {
+  format,
+  subDays,
+  startOfMonth,
+  endOfMonth,
+  startOfYear, 
+  endOfYear,   
+  parseISO, 
+  isWithinInterval, 
+  differenceInDays, 
+  addWeeks, 
+  addMonths, 
+  addYears, 
+  addDays,  
+  max       
+} from 'date-fns';
+
+
 
 // Register ChartJS components
 ChartJS.register(
-  ArcElement, 
-  Tooltip, 
+  ArcElement,
+  Tooltip,
   Legend,
   CategoryScale,
   LinearScale,
@@ -77,13 +93,112 @@ ChartJS.register(
   Title
 );
 
+const calculatePredictedIncome = (incomes, rangeStartDate, rangeEndDate) => {
+  let predictedIncome = 0;
+  // Ensure rangeStartDate and rangeEndDate are Date objects
+  const interval = {
+     start: rangeStartDate instanceof Date ? rangeStartDate : parseISO(rangeStartDate),
+     end: rangeEndDate instanceof Date ? rangeEndDate : parseISO(rangeEndDate)
+  };
+
+  incomes.forEach(income => {
+    // Ensure income object and date exist
+    if (!income || !income.date) {
+        console.warn('Skipping income with missing data:', income);
+        return;
+    }
+    // Ensure date is parsed correctly
+    let incomeStartDate;
+     try {
+         incomeStartDate = parseISO(income.date);
+         // Basic check if parseISO returned a valid date
+         if (isNaN(incomeStartDate.getTime())) throw new Error('Invalid date');
+    } catch (e) {
+        console.warn(`Skipping income with invalid date format: ${income.date}`, income);
+         return;
+     }
+
+
+    if (!income.isRecurring) {
+      // Non-recurring: Add if its specific date falls within the range
+      if (isWithinInterval(incomeStartDate, interval)) {
+        predictedIncome += income.amount;
+      }
+    } else {
+      // Recurring income: Calculate occurrences within the range [rangeStartDate, rangeEndDate]
+      let occurrenceDate = incomeStartDate;
+
+      // Determine the correct calculation based on frequency
+      switch (income.recurringFrequency) {
+        case 'daily': {
+            const effectiveStartDate = max([occurrenceDate, interval.start]);
+            if (effectiveStartDate <= interval.end) {
+                const daysCount = differenceInDays(interval.end, effectiveStartDate) + 1;
+                if (daysCount > 0) {
+                    predictedIncome += daysCount * income.amount;
+                }
+             }
+            break;
+        }
+        case 'weekly': {
+             let currentOccurrence = occurrenceDate;
+             while (currentOccurrence < interval.start) {
+                 currentOccurrence = addWeeks(currentOccurrence, 1);
+             }
+             while (currentOccurrence <= interval.end) {
+                 if (currentOccurrence >= incomeStartDate) {
+                     predictedIncome += income.amount;
+                 }
+                 currentOccurrence = addWeeks(currentOccurrence, 1);
+             }
+            break;
+        }
+        case 'monthly': {
+             let currentOccurrence = occurrenceDate;
+             while (currentOccurrence < interval.start) {
+                currentOccurrence = addMonths(currentOccurrence, 1);
+            }
+            while (currentOccurrence <= interval.end) {
+                 if (currentOccurrence >= incomeStartDate) {
+                    predictedIncome += income.amount;
+                 }
+                 currentOccurrence = addMonths(currentOccurrence, 1);
+            }
+          break;
+        }
+        case 'yearly': {
+            let currentOccurrence = occurrenceDate;
+             while (currentOccurrence < interval.start) {
+                currentOccurrence = addYears(currentOccurrence, 1);
+            }
+            while (currentOccurrence <= interval.end) {
+                 if (currentOccurrence >= incomeStartDate) {
+                    predictedIncome += income.amount;
+                 }
+                currentOccurrence = addYears(currentOccurrence, 1);
+            }
+          break;
+        }
+        default:
+            console.warn(`Unknown recurring frequency: ${income.recurringFrequency} for income ID: ${income._id}`);
+          break;
+      }
+    }
+  });
+
+  return predictedIncome;
+};
+
+
 const Dashboard = () => {
-  const { user } = useAuth();
+  // Removed useAuth reference if present
+  // const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expenseStats, setExpenseStats] = useState(null);
   const [recentExpenses, setRecentExpenses] = useState([]);
   const [recentIncomes, setRecentIncomes] = useState([]);
+  const [allIncomes, setAllIncomes] = useState([]);
   const [timeRange, setTimeRange] = useState('month');
   const [anchorEl, setAnchorEl] = useState(null);
   const [summaryData, setSummaryData] = useState({
@@ -91,294 +206,330 @@ const Dashboard = () => {
     income: 0,
     expenses: 0
   });
-  const [expensesByCategory, setExpensesByCategory] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
-  const [spendingTrends, setSpendingTrends] = useState([]);
-  
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Calculate date range based on selected time range
-        let startDate, endDate;
+
+        let rangeStartDate, rangeEndDate;
         const now = new Date();
-        
+
         switch (timeRange) {
           case 'week':
-            // Ensure we get a full 7 days including the current day
-            startDate = format(subDays(now, 6), 'yyyy-MM-dd');
-            endDate = format(now, 'yyyy-MM-dd');
-            console.log('Week date range:', { startDate, endDate, nowDate: now });
+            rangeStartDate = subDays(now, 6);
+            rangeEndDate = now;
+            rangeStartDate.setHours(0, 0, 0, 0);
+            rangeEndDate.setHours(23, 59, 59, 999); 
             break;
           case 'month':
-            startDate = format(startOfMonth(now), 'yyyy-MM-dd');
-            endDate = format(endOfMonth(now), 'yyyy-MM-dd');
+            rangeStartDate = startOfMonth(now);
+            rangeEndDate = endOfMonth(now);
+            rangeEndDate.setHours(23, 59, 59, 999); 
             break;
           case 'year':
-            startDate = format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd');
-            endDate = format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd');
+            rangeStartDate = startOfYear(now);
+            rangeEndDate = endOfYear(now);
+            rangeEndDate.setHours(23, 59, 59, 999); 
             break;
           default:
-            startDate = format(startOfMonth(now), 'yyyy-MM-dd');
-            endDate = format(endOfMonth(now), 'yyyy-MM-dd');
+            rangeStartDate = startOfMonth(now);
+            rangeEndDate = endOfMonth(now);
+            rangeEndDate.setHours(23, 59, 59, 999);
         }
-        
-        // Fetch expense statistics
-        console.log('Fetching expense stats with params:', { startDate, endDate });
+
+        const formattedStartDate = format(rangeStartDate, 'yyyy-MM-dd');
+        const formattedEndDate = format(rangeEndDate, 'yyyy-MM-dd');
+
+        // Fetch expense statistics for the calculated range
+        console.log(`Fetching expense stats for ${timeRange}: ${formattedStartDate} to ${formattedEndDate}`);
         const statsResponse = await axios.get('/api/expenses/stats', {
-          params: { startDate, endDate }
+          params: { startDate: formattedStartDate, endDate: formattedEndDate }
         });
-        
         console.log('Expense stats response:', statsResponse.data);
-        
-        // Fetch recent expenses
-        const expensesResponse = await axios.get('/api/expenses', {
+
+        console.log('Fetching all incomes...');
+        const allIncomesResponse = await axios.get('/api/incomes');
+        const fetchedIncomes = allIncomesResponse.data.incomes || [];
+        setAllIncomes(fetchedIncomes);
+        console.log(`Fetched ${fetchedIncomes.length} total income records.`);
+
+
+        // Fetch recent expenses for the list display
+        const recentExpensesResponse = await axios.get('/api/expenses', {
           params: { limit: 5, sort: '-date' }
         });
-        
-        // Fetch recent incomes
-        const incomesResponse = await axios.get('/api/incomes', {
+
+        // Fetch recent incomes for the list display
+        const recentIncomesResponse = await axios.get('/api/incomes', {
           params: { limit: 5, sort: '-date' }
         });
-        
+
         setExpenseStats(statsResponse.data);
-        setRecentExpenses(expensesResponse.data.expenses);
-        setRecentIncomes(incomesResponse.data.incomes);
-        
+        setRecentExpenses(recentExpensesResponse.data.expenses || []);
+        setRecentIncomes(recentIncomesResponse.data.incomes || []);
+
+        console.log('Calculating predicted income...');
+        // Pass fetched incomes and DATE OBJECTS to the calculation function
+        const predictedIncome = calculatePredictedIncome(fetchedIncomes, rangeStartDate, rangeEndDate);
+        console.log(`Predicted Income for ${timeRange}: ${predictedIncome.toFixed(2)}`);
+
         // Calculate totals for summary data
-        const totalExpenses = statsResponse.data.total || 0;
-        const totalIncome = incomesResponse.data.incomes.reduce(
+        const totalIncome = recentIncomesResponse.data.incomes.reduce(
           (sum, income) => sum + income.amount, 
           0
         );
-        
+
+        // Get total expenses for the period from stats
+        const totalExpenses = statsResponse.data.total || 0;
+
         setSummaryData({
           balance: totalIncome - totalExpenses,
-          income: totalIncome,
+          income: predictedIncome,
           expenses: totalExpenses
         });
-        
-        // Combine and sort recent transactions
+
+        // Combine and sort recent transactions for the list
         const combinedTransactions = [
-          ...expensesResponse.data.expenses.map(expense => ({
+          ...(recentExpensesResponse.data.expenses || []).map(expense => ({
             ...expense,
             type: 'expense',
-            amount: -Math.abs(expense.amount) // Ensure expenses are negative
+            amount: -Math.abs(expense.amount)
           })),
-          ...incomesResponse.data.incomes.map(income => ({
+          ...(recentIncomesResponse.data.incomes || []).map(income => ({
             ...income,
             type: 'income',
             source: income.source || 'Income',
             category: { name: income.source || 'Income' }
           }))
-        ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-        
+        ].sort((a, b) => {
+            // Safer date sorting using parseISO
+            const dateA = a.date ? parseISO(a.date) : new Date(0);
+            const dateB = b.date ? parseISO(b.date) : new Date(0);
+            // Check for invalid dates after parsing
+            if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+                console.warn("Invalid date found during sorting:", a, b);
+                return 0;
+            }
+            return dateB - dateA;
+        }).slice(0, 5);
+
         setRecentTransactions(combinedTransactions);
+
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again later.');
+         if (err.response) {
+             console.error("API Error Response:", err.response.data);
+             setError(`Failed to load dashboard data (Status: ${err.response.status}). Please check API endpoints and parameters.`);
+         } else if (err.request) {
+             console.error("API No Response:", err.request);
+             setError('Failed to load dashboard data. Server might be unreachable.');
+         } else {
+             console.error("Setup Error:", err.message);
+             setError(`Failed to load dashboard data. An error occurred: ${err.message}`);
+         }
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchDashboardData();
   }, [timeRange]);
-  
-  // Prepare chart data
-  const preparePieChartData = () => {
-    if (!expenseStats || !expenseStats.byCategory) {
+
+  /// Prepare chart data
+    const preparePieChartData = () => {
+      if (!expenseStats || !expenseStats.byCategory) {
+        return {
+          labels: [],
+          datasets: [
+            {
+              data: [],
+              backgroundColor: [],
+              borderWidth: 1
+            }
+          ]
+        };
+      }
+      
       return {
-        labels: [],
+        labels: expenseStats.byCategory.map(item => item.category.name),
         datasets: [
           {
-            data: [],
-            backgroundColor: [],
+            data: expenseStats.byCategory.map(item => item.total),
+            backgroundColor: expenseStats.byCategory.map(item => item.category.color),
             borderWidth: 1
           }
         ]
       };
-    }
-    
-    return {
-      labels: expenseStats.byCategory.map(item => item.category.name),
-      datasets: [
-        {
-          data: expenseStats.byCategory.map(item => item.total),
-          backgroundColor: expenseStats.byCategory.map(item => item.category.color),
-          borderWidth: 1
-        }
-      ]
     };
-  };
-  
-  const prepareLineChartData = () => {
-    if (!expenseStats || !expenseStats.byDate) {
-      return {
-        labels: [],
-        datasets: [
-          {
-            label: 'Daily Expenses',
-            data: [],
-            borderColor: 'rgb(75, 192, 192)',
-            tension: 0.1
-          }
-        ]
-      };
-    }
     
-    // For week view, ensure we have data for all 7 days
-    if (timeRange === 'week') {
-      const now = new Date();
-      const labels = [];
-      const data = [];
-      const dateMap = {}; // Map to store date to data mapping
-      
-      // First, create a mapping of formatted dates to their expense values
-      expenseStats.byDate.forEach(item => {
-        // Store the expense data with the date as the key
-        dateMap[item._id] = item.total;
-        console.log(`Found expense for date ${item._id}: $${item.total}`);
-      });
-      
-      // Create array of last 7 days
-      for (let i = 6; i >= 0; i--) {
-        const date = subDays(now, i);
-        const formattedDate = format(date, 'yyyy-MM-dd');
-        const dayLabel = format(date, 'EEE dd'); // Use EEE to show day name (Mon, Tue, etc.)
-        
-        labels.push(dayLabel);
-        
-        // Get expense value from map or use 0
-        const expenseValue = dateMap[formattedDate] || 0;
-        data.push(expenseValue);
-        
-        console.log(`Day ${dayLabel} (${formattedDate}): $${expenseValue}`);
+    const prepareLineChartData = () => {
+      if (!expenseStats || !expenseStats.byDate) {
+        return {
+          labels: [],
+          datasets: [
+            {
+              label: 'Daily Expenses',
+              data: [],
+              borderColor: 'rgb(75, 192, 192)',
+              tension: 0.1
+            }
+          ]
+        };
       }
       
-      // Special check for today's expenses
-      const todayFormatted = format(now, 'yyyy-MM-dd');
-      if (dateMap[todayFormatted]) {
-        console.log(`Ensuring today's expenses (${todayFormatted}) are included: $${dateMap[todayFormatted]}`);
-        // Make sure today's expenses are in the last position of the data array
-        data[data.length - 1] = dateMap[todayFormatted];
-      }
-      
-      // Log for debugging
-      console.log('Week data:', { 
-        dates: labels, 
-        values: data,
-        dateMap,
-        rawExpenseData: expenseStats.byDate
-      });
-      
-      return {
-        labels,
-        datasets: [
-          {
-            label: 'Daily Expenses',
-            data,
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.1
-          }
-        ]
-      };
-    }
-    
-    // For month view, ensure we have data for all days of the month
-    if (timeRange === 'month') {
-      const now = new Date();
-      const firstDay = startOfMonth(now);
-      const lastDay = endOfMonth(now);
-      const daysInMonth = lastDay.getDate();
-      
-      const labels = [];
-      const data = [];
-      
-      // Create array for all days in the month
-      for (let i = 1; i <= daysInMonth; i++) {
-        const date = new Date(now.getFullYear(), now.getMonth(), i);
-        const formattedDate = format(date, 'yyyy-MM-dd');
-        const dayLabel = format(date, 'MMM dd');
+      // For week view, ensure we have data for all 7 days
+      if (timeRange === 'week') {
+        const now = new Date();
+        const labels = [];
+        const data = [];
+        const dateMap = {};
         
-        labels.push(dayLabel);
+        // First, create a mapping of formatted dates to their expense values
+        expenseStats.byDate.forEach(item => {
+          // Store the expense data with the date as the key
+          dateMap[item._id] = item.total;
+          console.log(`Found expense for date ${item._id}: $${item.total}`);
+        });
         
-        // Find matching expense data or use 0
-        const expenseForDay = expenseStats.byDate.find(item => item._id === formattedDate);
-        data.push(expenseForDay ? expenseForDay.total : 0);
-      }
-      
-      return {
-        labels,
-        datasets: [
-          {
-            label: 'Daily Expenses',
-            data,
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.1
-          }
-        ]
-      };
-    }
-    
-    // For year view, use the data as is or aggregate by month
-    if (timeRange === 'year') {
-      // Group data by month
-      const monthlyData = {};
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      
-      // Initialize all months with zero
-      for (let i = 0; i < 12; i++) {
-        const monthLabel = format(new Date(currentYear, i, 1), 'MMM');
-        monthlyData[monthLabel] = 0;
-      }
-      
-      // Sum up expenses for each month
-      expenseStats.byDate.forEach(item => {
-        const date = new Date(item._id);
-        if (date.getFullYear() === currentYear) {
-          const monthLabel = format(date, 'MMM');
-          monthlyData[monthLabel] += item.total;
+        // Create array of last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const date = subDays(now, i);
+          const formattedDate = format(date, 'yyyy-MM-dd');
+          const dayLabel = format(date, 'EEE dd');
+          
+          labels.push(dayLabel);
+          
+          // Get expense value from map or use 0
+          const expenseValue = dateMap[formattedDate] || 0;
+          data.push(expenseValue);
+          
+          console.log(`Day ${dayLabel} (${formattedDate}): $${expenseValue}`);
         }
-      });
+        
+        // Special check for today's expenses
+        const todayFormatted = format(now, 'yyyy-MM-dd');
+        if (dateMap[todayFormatted]) {
+          console.log(`Ensuring today's expenses (${todayFormatted}) are included: $${dateMap[todayFormatted]}`);
+          // Make sure today's expenses are in the last position of the data array
+          data[data.length - 1] = dateMap[todayFormatted];
+        }
+        
+        // Log for debugging
+        console.log('Week data:', { 
+          dates: labels, 
+          values: data,
+          dateMap,
+          rawExpenseData: expenseStats.byDate
+        });
+        
+        return {
+          labels,
+          datasets: [
+            {
+              label: 'Daily Expenses',
+              data,
+              borderColor: 'rgb(75, 192, 192)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              tension: 0.1
+            }
+          ]
+        };
+      }
       
-      const labels = Object.keys(monthlyData);
-      const data = Object.values(monthlyData);
+      // For month view, ensure we have data for all days of the month
+      if (timeRange === 'month') {
+        const now = new Date();
+        const firstDay = startOfMonth(now);
+        const lastDay = endOfMonth(now);
+        const daysInMonth = lastDay.getDate();
+        
+        const labels = [];
+        const data = [];
+        
+        // Create array for all days in the month
+        for (let i = 1; i <= daysInMonth; i++) {
+          const date = new Date(now.getFullYear(), now.getMonth(), i);
+          const formattedDate = format(date, 'yyyy-MM-dd');
+          const dayLabel = format(date, 'MMM dd');
+          
+          labels.push(dayLabel);
+          
+          // Find matching expense data or use 0
+          const expenseForDay = expenseStats.byDate.find(item => item._id === formattedDate);
+          data.push(expenseForDay ? expenseForDay.total : 0);
+        }
+        
+        return {
+          labels,
+          datasets: [
+            {
+              label: 'Daily Expenses',
+              data,
+              borderColor: 'rgb(75, 192, 192)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              tension: 0.1
+            }
+          ]
+        };
+      }
       
+      // For year view, use the data as is or aggregate by month
+      if (timeRange === 'year') {
+        // Group data by month
+        const monthlyData = {};
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        
+        // Initialize all months with zero
+        for (let i = 0; i < 12; i++) {
+          const monthLabel = format(new Date(currentYear, i, 1), 'MMM');
+          monthlyData[monthLabel] = 0;
+        }
+        
+        // Sum up expenses for each month
+        expenseStats.byDate.forEach(item => {
+          const date = new Date(item._id);
+          if (date.getFullYear() === currentYear) {
+            const monthLabel = format(date, 'MMM');
+            monthlyData[monthLabel] += item.total;
+          }
+        });
+        
+        const labels = Object.keys(monthlyData);
+        const data = Object.values(monthlyData);
+        
+        return {
+          labels,
+          datasets: [
+            {
+              label: 'Monthly Expenses',
+              data,
+              borderColor: 'rgb(75, 192, 192)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              tension: 0.1
+            }
+          ]
+        };
+      }
+      
+      // Fallback to raw data
       return {
-        labels,
+        labels: expenseStats.byDate.map(item => format(new Date(item._id), 'MMM dd')),
         datasets: [
           {
-            label: 'Monthly Expenses',
-            data,
+            label: 'Daily Expenses',
+            data: expenseStats.byDate.map(item => item.total),
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
             tension: 0.1
           }
         ]
       };
-    }
-    
-    // Fallback to raw data
-    return {
-      labels: expenseStats.byDate.map(item => format(new Date(item._id), 'MMM dd')),
-      datasets: [
-        {
-          label: 'Daily Expenses',
-          data: expenseStats.byDate.map(item => item.total),
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          tension: 0.1
-        }
-      ]
     };
-  };
-  
+
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -388,8 +539,11 @@ const Dashboard = () => {
   };
 
   const handleTimeRangeChange = (event, newValue) => {
-    setTimeRange(newValue);
+     if (newValue !== timeRange) {
+        setTimeRange(newValue);
+     }
   };
+
 
   if (loading) {
     return (
@@ -398,15 +552,17 @@ const Dashboard = () => {
       </Box>
     );
   }
-  
+
   if (error) {
     return (
-      <Alert severity="error" sx={{ mt: 2 }}>
-        {error}
-      </Alert>
-    );
+       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+           <Alert severity="error" sx={{ mt: 2 }}>
+               {error}
+           </Alert>
+        </Container>
+     );
   }
-  
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
@@ -434,6 +590,7 @@ const Dashboard = () => {
         </Grid>
 
         {/* Summary Cards */}
+        {/* Balance Card */}
         <Grid item xs={12} md={4}>
           <Paper
             sx={{
@@ -450,16 +607,21 @@ const Dashboard = () => {
               <WalletIcon sx={{ fontSize: 100 }} />
             </Box>
             <Typography component="h2" variant="h6" color="primary" gutterBottom>
+              {/* Title */}
               Current Balance
             </Typography>
             <Typography component="p" variant="h4">
+              {/* Display calculated balance */}
               ${summaryData.balance.toFixed(2)}
             </Typography>
             <Typography color="text.secondary" sx={{ flex: 1 }}>
+              {/* caption */}
               as of {format(new Date(), 'MMMM dd, yyyy')}
             </Typography>
           </Paper>
         </Grid>
+
+        {/* Income Card */}
         <Grid item xs={12} md={4}>
           <Paper
             sx={{
@@ -475,171 +637,172 @@ const Dashboard = () => {
             <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.1 }}>
               <IncomeIcon sx={{ fontSize: 100 }} />
             </Box>
+            {/* Title */}
             <Typography component="h2" variant="h6" color="success.main" gutterBottom>
               Income
             </Typography>
+            {/* Display predicted income from summaryData */}
             <Typography component="p" variant="h4">
               ${summaryData.income.toFixed(2)}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              
-              <Typography color="success.main" sx={{ ml: 1 }}>
+            {/*  */}
+            <Typography color="text.secondary" sx={{ flex: 1 }}>
                 
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              height: 120,
-              bgcolor: '#ffebee',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.1 }}>
-              <ExpenseIcon sx={{ fontSize: 100 }} />
-            </Box>
-            <Typography component="h2" variant="h6" color="error.main" gutterBottom>
-              Expenses
             </Typography>
-            <Typography component="p" variant="h4">
-              ${summaryData.expenses.toFixed(2)}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              
-              <Typography color="error.main" sx={{ ml: 1 }}>
-                
-              </Typography>
-            </Box>
           </Paper>
         </Grid>
 
+         {/* Expenses Card */}
+         <Grid item xs={12} md={4}>
+           <Paper
+             sx={{
+               p: 2,
+               display: 'flex',
+               flexDirection: 'column',
+               height: 120,
+               bgcolor: '#ffebee',
+               position: 'relative',
+               overflow: 'hidden',
+             }}
+           >
+             <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.1 }}>
+               <ExpenseIcon sx={{ fontSize: 100 }} />
+             </Box>
+             <Typography component="h2" variant="h6" color="error.main" gutterBottom>
+               Expenses
+             </Typography>
+             <Typography component="p" variant="h4">
+               ${summaryData.expenses.toFixed(2)}
+             </Typography>
+             {/*  */}
+             <Typography color="text.secondary" sx={{ flex: 1 }}>
+                
+             </Typography>
+           </Paper>
+         </Grid>
+
+        
         {/* Charts */}
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-              <Tabs value={timeRange} onChange={handleTimeRangeChange}>
+                <Tabs value={timeRange} onChange={handleTimeRangeChange}>
                 <Tab label="Week" value="week" />
                 <Tab label="Month" value="month" />
                 <Tab label="Year" value="year" />
-              </Tabs>
+                </Tabs>
             </Box>
             <Typography component="h2" variant="h6" color="primary" gutterBottom>
-              Spending Trends
+                Spending Trends
             </Typography>
             <Box sx={{ height: 300, position: 'relative' }}>
-              <Line data={prepareLineChartData()} options={{ maintainAspectRatio: false }} />
+                <Line data={prepareLineChartData()} options={{ maintainAspectRatio: false }} />
             </Box>
-          </Paper>
+            </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
             <Typography component="h2" variant="h6" color="primary" gutterBottom>
-              Expenses by Category
+                Expenses by Category
             </Typography>
             <Box sx={{ height: 300, position: 'relative' }}>
-              <Pie data={preparePieChartData()} options={{ maintainAspectRatio: false }} />
+                <Pie data={preparePieChartData()} options={{ maintainAspectRatio: false }} />
             </Box>
-          </Paper>
+            </Paper>
         </Grid>
 
         {/* Recent Transactions */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
+            <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography component="h2" variant="h6" color="primary">
+                <Typography component="h2" variant="h6" color="primary">
                 Recent Transactions
-              </Typography>
-              <Button 
+                </Typography>
+                <Button 
                 variant="outlined" 
                 startIcon={<AddIcon />}
                 size="small"
                 component={RouterLink}
                 to="/expenses/add"
-              >
+                >
                 Add Transaction
-              </Button>
+                </Button>
             </Box>
             <List>
-              {recentTransactions.length === 0 ? (
+                {recentTransactions.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
-                  No recent transactions found.
+                    No recent transactions found.
                 </Typography>
-              ) : (
+                ) : (
                 recentTransactions.map((transaction) => (
-                  <React.Fragment key={transaction._id}>
+                    <React.Fragment key={transaction._id}>
                     <ListItem alignItems="flex-start">
-                      <ListItemAvatar>
+                        <ListItemAvatar>
                         <Avatar sx={{ 
-                          bgcolor: transaction.type === 'income' ? 'success.main' : 'error.main' 
+                            bgcolor: transaction.type === 'income' ? 'success.main' : 'error.main' 
                         }}>
-                          {transaction.type === 'income' ? <IncomeIcon /> : <ExpenseIcon />}
+                            {transaction.type === 'income' ? <IncomeIcon /> : <ExpenseIcon />}
                         </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
+                        </ListItemAvatar>
+                        <ListItemText
                         primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <Typography component="span" variant="body1">
-                              {transaction.description || transaction.source}
+                                {transaction.description || transaction.source}
                             </Typography>
                             {transaction.isRecurring && (
-                              <Chip
+                                <Chip
                                 icon={<RepeatIcon sx={{ fontSize: '0.75rem' }} />}
                                 label={transaction.recurringFrequency.charAt(0).toUpperCase() + transaction.recurringFrequency.slice(1)}
                                 size="small"
                                 color={transaction.type === 'income' ? 'primary' : 'secondary'}
                                 sx={{ ml: 1, height: 20, '& .MuiChip-label': { fontSize: '0.625rem', px: 1 } }}
-                              />
+                                />
                             )}
-                          </Box>
+                            </Box>
                         }
                         secondary={
-                          <>
+                            <>
                             <Typography
-                              component="span"
-                              variant="body2"
-                              color="text.primary"
+                                component="span"
+                                variant="body2"
+                                color="text.primary"
                             >
-                              {transaction.type === 'income' ? 'Income' : transaction.category?.name || 'Expense'}
+                                {transaction.type === 'income' ? 'Income' : transaction.category?.name || 'Expense'}
                             </Typography>
                             {" — "}{format(new Date(transaction.date), 'MMM dd, yyyy')}
-                          </>
+                            </>
                         }
-                      />
-                      <Typography
+                        />
+                        <Typography
                         variant="body1"
                         sx={{ 
-                          fontWeight: 'bold', 
-                          color: transaction.type === 'income' ? 'success.main' : 'error.main' 
+                            fontWeight: 'bold', 
+                            color: transaction.type === 'income' ? 'success.main' : 'error.main' 
                         }}
-                      >
-                        {transaction.type === 'income' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
-                      </Typography>
+                        >
+                        {transaction.amount > 0 ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
+                        </Typography>
                     </ListItem>
                     <Divider variant="inset" component="li" />
-                  </React.Fragment>
+                    </React.Fragment>
                 ))
-              )}
+                )}
             </List>
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <Button 
+                <Button 
                 color="primary"
                 component={RouterLink}
                 to="/expenses"
-              >
+                >
                 View All Transactions
-              </Button>
+                </Button>
             </Box>
-          </Paper>
+            </Paper>
         </Grid>
-      </Grid>
+        </Grid>
     </Container>
-  );
+    );
 };
 
-export default Dashboard; 
+export default Dashboard;
