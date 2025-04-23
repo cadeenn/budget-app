@@ -27,7 +27,8 @@ import {
   Menu,
   Tab,
   Tabs,
-  Chip
+  Chip,
+  LinearProgress
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -200,6 +201,7 @@ const Dashboard = () => {
   const [recentExpenses, setRecentExpenses] = useState([]);
   const [recentIncomes, setRecentIncomes] = useState([]);
   const [allIncomes, setAllIncomes] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [timeRange, setTimeRange] = useState('month');
   const [anchorEl, setAnchorEl] = useState(null);
   const [summaryData, setSummaryData] = useState({
@@ -268,9 +270,13 @@ const Dashboard = () => {
           params: { limit: 5, sort: '-date' }
         });
 
+        // Fetch budget progress data
+        const budgetsResponse = await axios.get('/api/budgets/progress');
+
         setExpenseStats(statsResponse.data);
         setRecentExpenses(recentExpensesResponse.data.expenses || []);
         setRecentIncomes(recentIncomesResponse.data.incomes || []);
+        setBudgets(budgetsResponse.data || []);
 
         console.log('Calculating predicted income...');
         // Pass fetched incomes and DATE OBJECTS to the calculation function
@@ -675,7 +681,7 @@ const Dashboard = () => {
         
         {/* Charts */}
         <Grid item xs={12} md={8}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 450 }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
                 <Tabs value={timeRange} onChange={handleTimeRangeChange}>
                 <Tab label="Week" value="week" />
@@ -683,25 +689,59 @@ const Dashboard = () => {
                 <Tab label="Year" value="year" />
                 </Tabs>
             </Box>
-            <Typography component="h2" variant="h6" color="primary" gutterBottom>
+            <Typography component="h2" variant="h6" color="primary" gutterBottom align="center">
                 Spending Trends
             </Typography>
-            <Box sx={{ height: 300, position: 'relative' }}>
-                <Line data={prepareLineChartData()} options={{ maintainAspectRatio: false }} />
+            <Box sx={{ flex: 1, position: 'relative' }}>
+                <Line data={prepareLineChartData()} options={{ 
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'top',
+                      labels: {
+                        usePointStyle: true,
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        padding: 20,
+                        font: {
+                          size: 12
+                        }
+                      }
+                    },
+                    title: {
+                      display: false
+                    }
+                  }
+                }} />
             </Box>
             </Paper>
         </Grid>
 <Grid item xs={12} md={4}>
-  <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-    <Typography component="h2" variant="h6" color="primary" gutterBottom>
+  <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 450 }}>
+    <Typography component="h2" variant="h6" color="primary" gutterBottom align="center">
       Expenses by Category
     </Typography>
-    <Box sx={{ height: 300, position: 'relative' }}>
+    <Box sx={{ flex: 1, position: 'relative' }}>
       <Pie 
         data={preparePieChartData()} 
         options={{ 
           maintainAspectRatio: false,
           plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                usePointStyle: true,
+                boxWidth: 10,
+                boxHeight: 10,
+                padding: 20,
+                font: {
+                  size: 12
+                }
+              }
+            },
+            title: {
+              display: false
+            },
             tooltip: {
               callbacks: {
                 label: function(context) {
@@ -714,11 +754,6 @@ const Dashboard = () => {
                   }
                   return label;
                 }
-              }
-            },
-            datalabels: {
-              formatter: (value) => {
-                return '$' + value.toFixed(2);
               }
             }
           }
@@ -815,6 +850,112 @@ const Dashboard = () => {
                 </Button>
             </Box>
             </Paper>
+        </Grid>
+
+        {/* Budget Progress Section */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography component="h2" variant="h6" color="primary">
+                Budget Progress
+              </Typography>
+              <Button 
+                variant="outlined" 
+                size="small"
+                component={RouterLink}
+                to="/budgets"
+              >
+                View All Budgets
+              </Button>
+            </Box>
+            
+            {budgets.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
+                No budgets found. Create your first budget to track your spending.
+              </Typography>
+            ) : (
+              <Grid container spacing={2}>
+                {budgets.slice(0, 3).map((budgetData) => {
+                  const budget = budgetData.budget;
+                  const progress = budgetData.progress;
+                  
+                  // Safety checks
+                  if (!budget || !progress) return null;
+                  
+                  const percentSpent = progress.percentageSpent || 0;
+                  const isOverBudget = progress.isOverBudget;
+                  
+                  // Determine color based on percentage spent
+                  const getProgressColor = (percent) => {
+                    if (percent >= 100) return 'error';
+                    if (percent >= 75) return 'warning';
+                    return 'success';
+                  };
+                  
+                  return (
+                    <Grid item xs={12} md={4} key={budget._id}>
+                      <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {budget.name}
+                          </Typography>
+                          <Chip 
+                            label={budget.category ? budget.category.name : 'All Categories'} 
+                            size="small"
+                            style={{ 
+                              backgroundColor: budget.category ? budget.category.color : '#757575',
+                              color: '#fff'
+                            }}
+                          />
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            ${progress.totalSpent.toFixed(2)} of ${budget.amount.toFixed(2)}
+                          </Typography>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ fontWeight: 'bold' }}
+                            color={isOverBudget ? 'error.main' : getProgressColor(percentSpent) + '.main'}
+                          >
+                            {Math.round(percentSpent)}%
+                          </Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Box sx={{ width: '100%', mr: 1 }}>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={Math.min(percentSpent, 100)} 
+                              color={getProgressColor(percentSpent)}
+                              sx={{ height: 8, borderRadius: 5 }}
+                            />
+                          </Box>
+                        </Box>
+                        
+                        {isOverBudget && (
+                          <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                            Budget exceeded by ${Math.abs(progress.remaining).toFixed(2)}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )}
+            
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Button 
+                color="primary"
+                component={RouterLink}
+                to="/budgets/add"
+                startIcon={<AddIcon />}
+              >
+                Create New Budget
+              </Button>
+            </Box>
+          </Paper>
         </Grid>
         </Grid>
     </Container>
