@@ -537,17 +537,42 @@ const Dashboard = () => {
             </Box>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Typography component="h2" variant="h6" color="primary" gutterBottom>
-              Expenses by Category
-            </Typography>
-            <Box sx={{ height: 300, position: 'relative' }}>
-              <Pie data={preparePieChartData()} options={{ maintainAspectRatio: false }} />
-            </Box>
-          </Paper>
-        </Grid>
-
+<Grid item xs={12} md={4}>
+  <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+    <Typography component="h2" variant="h6" color="primary" gutterBottom>
+      Expenses by Category
+    </Typography>
+    <Box sx={{ height: 300, position: 'relative' }}>
+      <Pie 
+        data={preparePieChartData()} 
+        options={{ 
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.parsed !== null) {
+                    label += '$' + context.parsed.toFixed(2);
+                  }
+                  return label;
+                }
+              }
+            },
+            datalabels: {
+              formatter: (value) => {
+                return '$' + value.toFixed(2);
+              }
+            }
+          }
+        }} 
+      />
+    </Box>
+  </Paper>
+</Grid>
         {/* Recent Transactions */}
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>

@@ -23,7 +23,9 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Divider
+  Divider,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,8 +38,23 @@ import {
   Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+// Add these imports for the pie chart
+import { Pie } from 'react-chartjs-2';
+import { 
+  Chart as ChartJS, 
+  ArcElement, 
+  Tooltip, 
+  Legend 
+} from 'chart.js';
+
+// Register ChartJS components needed for pie chart
+ChartJS.register(
+  ArcElement, 
+  Tooltip, 
+  Legend
+);
 
 const ExpenseList = () => {
   const { user } = useAuth();
@@ -59,6 +76,9 @@ const ExpenseList = () => {
     search: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  // Add state for expense stats and time range
+  const [expenseStats, setExpenseStats] = useState(null);
+  const [timeRange, setTimeRange] = useState('month');
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -72,6 +92,47 @@ const ExpenseList = () => {
 
     fetchCategories();
   }, []);
+
+  // Add useEffect for fetching expense stats - same as Dashboard
+  useEffect(() => {
+    const fetchExpenseStats = async () => {
+      try {
+        // Calculate date range based on selected time range
+        let startDate, endDate;
+        const now = new Date();
+        
+        switch (timeRange) {
+          case 'week':
+            startDate = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6), 'yyyy-MM-dd');
+            endDate = format(now, 'yyyy-MM-dd');
+            break;
+          case 'month':
+            startDate = format(startOfMonth(now), 'yyyy-MM-dd');
+            endDate = format(endOfMonth(now), 'yyyy-MM-dd');
+            break;
+          case 'year':
+            startDate = format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd');
+            endDate = format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd');
+            break;
+          default:
+            startDate = format(startOfMonth(now), 'yyyy-MM-dd');
+            endDate = format(endOfMonth(now), 'yyyy-MM-dd');
+        }
+        
+        // Fetch expense statistics - same API as Dashboard
+        const statsResponse = await axios.get('/api/expenses/stats', {
+          params: { startDate, endDate }
+        });
+        
+        setExpenseStats(statsResponse.data);
+      } catch (err) {
+        console.error('Error fetching expense stats:', err);
+        // Silently fail - pie chart will just not show
+      }
+    };
+
+    fetchExpenseStats();
+  }, [timeRange]);
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -110,6 +171,33 @@ const ExpenseList = () => {
 
     fetchExpenses();
   }, [pagination.page, pagination.limit, filters]);
+
+  // Same function as in Dashboard to prepare pie chart data
+  const preparePieChartData = () => {
+    if (!expenseStats || !expenseStats.byCategory) {
+      return {
+        labels: [],
+        datasets: [
+          {
+            data: [],
+            backgroundColor: [],
+            borderWidth: 1
+          }
+        ]
+      };
+    }
+    
+    return {
+      labels: expenseStats.byCategory.map(item => item.category.name),
+      datasets: [
+        {
+          data: expenseStats.byCategory.map(item => item.total),
+          backgroundColor: expenseStats.byCategory.map(item => item.category.color),
+          borderWidth: 1
+        }
+      ]
+    };
+  };
 
   const handleChangePage = (event, newPage) => {
     setPagination({
@@ -169,6 +257,11 @@ const ExpenseList = () => {
     }
   };
 
+  // Add function to handle time range change
+  const handleTimeRangeChange = (event, newValue) => {
+    setTimeRange(newValue);
+  };
+
   const getCategoryName = (categoryId) => {
     const category = categories.find(cat => cat._id === categoryId);
     return category ? category.name : 'Unknown';
@@ -214,100 +307,145 @@ const ExpenseList = () => {
         </Alert>
       )}
 
-      {showFilters && (
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Filters
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                label="Start Date"
-                type="date"
-                name="startDate"
-                value={filters.startDate}
-                onChange={handleFilterChange}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                label="End Date"
-                type="date"
-                name="endDate"
-                value={filters.endDate}
-                onChange={handleFilterChange}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  name="category"
-                  value={filters.category}
+      {/* Add Pie Chart Here - Full Width Paper */}
+      <Paper sx={{ mb: 3 }}>
+        {showFilters && (
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
+            <Typography variant="h6" gutterBottom>
+              Filters
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  label="Start Date"
+                  type="date"
+                  name="startDate"
+                  value={filters.startDate}
                   onChange={handleFilterChange}
-                  label="Category"
-                >
-                  <MenuItem value="">All Categories</MenuItem>
-                  {categories.map(category => (
-                    <MenuItem key={category._id} value={category._id}>
-                      {category.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  label="End Date"
+                  type="date"
+                  name="endDate"
+                  value={filters.endDate}
+                  onChange={handleFilterChange}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    name="category"
+                    value={filters.category}
+                    onChange={handleFilterChange}
+                    label="Category"
+                  >
+                    <MenuItem value="">All Categories</MenuItem>
+                    {categories.map(category => (
+                      <MenuItem key={category._id} value={category._id}>
+                        {category.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  label="Search"
+                  name="search"
+                  value={filters.search}
+                  onChange={handleFilterChange}
+                  fullWidth
+                  InputProps={{
+                    endAdornment: (
+                      <SearchIcon color="action" />
+                    )
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  label="Min Amount"
+                  type="number"
+                  name="minAmount"
+                  value={filters.minAmount}
+                  onChange={handleFilterChange}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <TextField
+                  label="Max Amount"
+                  type="number"
+                  name="maxAmount"
+                  value={filters.maxAmount}
+                  onChange={handleFilterChange}
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={12} md={6}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ClearIcon />}
+                    onClick={handleClearFilters}
+                  >
+                    Clear Filters
+                  </Button>
+                </Box>
+              </Grid>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                label="Search"
-                name="search"
-                value={filters.search}
-                onChange={handleFilterChange}
-                fullWidth
-                InputProps={{
-                  endAdornment: (
-                    <SearchIcon color="action" />
-                  )
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                label="Min Amount"
-                type="number"
-                name="minAmount"
-                value={filters.minAmount}
-                onChange={handleFilterChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                label="Max Amount"
-                type="number"
-                name="maxAmount"
-                value={filters.maxAmount}
-                onChange={handleFilterChange}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} sm={12} md={6}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<ClearIcon />}
-                  onClick={handleClearFilters}
-                >
-                  Clear Filters
-                </Button>
+          </Box>
+        )}
+
+        {/* Pie Chart with Centered Content */}
+        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Box sx={{ width: '100%', maxWidth: '600px' }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, display: 'flex', justifyContent: 'center' }}>
+              <Tabs value={timeRange} onChange={handleTimeRangeChange} centered>
+                <Tab label="Week" value="week" />
+                <Tab label="Month" value="month" />
+                <Tab label="Year" value="year" />
+              </Tabs>
+            </Box>
+            <Typography component="h2" variant="h6" color="primary" gutterBottom align="center">
+              Expenses by Category
+            </Typography>
+            <Box sx={{ height: 300, position: 'relative', display: 'flex', justifyContent: 'center' }}>
+              <Box sx={{ width: '100%', maxWidth: '500px', height: '100%' }}>
+                <Pie 
+                  data={preparePieChartData()} 
+                  options={{ 
+                    maintainAspectRatio: false,
+                    plugins: {
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                              label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                              label += '$' + context.parsed.toFixed(2);
+                            }
+                            return label;
+                          }
+                        }
+                      }
+                    }
+                  }} 
+                />
               </Box>
-            </Grid>
-          </Grid>
-        </Paper>
-      )}
+            </Box>
+          </Box>
+        </Box>
+      </Paper>
 
       <Paper>
         <TableContainer>
@@ -404,4 +542,4 @@ const ExpenseList = () => {
   );
 };
 
-export default ExpenseList; 
+export default ExpenseList;
