@@ -9,7 +9,7 @@ const Category = require('../models/category.model');
  */
 exports.getExpenses = async (req, res) => {
   try {
-    const { startDate, endDate, category, minAmount, maxAmount, sort = '-date' } = req.query;
+    const { startDate, endDate, category, minAmount, maxAmount, sort = '-date', search } = req.query;
     
     // Build filter object
     const filter = { user: req.user._id };
@@ -29,6 +29,14 @@ exports.getExpenses = async (req, res) => {
       filter.amount = {};
       if (minAmount) filter.amount.$gte = Number(minAmount);
       if (maxAmount) filter.amount.$lte = Number(maxAmount);
+    }
+
+    // Add search filter if provided
+    if (search) {
+      filter.$or = [
+        { source: { $regex: search, $options: 'i' } }, // Search in source
+        { description: { $regex: search, $options: 'i' } } // Search in description
+      ];
     }
     
     // Execute query with pagination
