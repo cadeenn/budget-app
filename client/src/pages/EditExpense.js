@@ -217,6 +217,11 @@ const EditExpense = () => {
                   startAdornment: (
                     <InputAdornment position="start">$</InputAdornment>
                   ),
+                  onKeyDown: (e) => {
+                    if (["-", "+"].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }
                 }}
                 error={!!formErrors.amount}
                 helperText={formErrors.amount}
