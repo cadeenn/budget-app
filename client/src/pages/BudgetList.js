@@ -87,54 +87,47 @@ const BudgetList = () => {
       try {
         setLoading(true);
         setError(null);
-    
+
         const params = {
           page: pagination.page + 1,
           limit: pagination.limit,
           sort: '-createdAt'
         };
-    
+
         // Add filters if provided
         if (filters.isActive) params.isActive = filters.isActive;
         if (filters.category) params.category = filters.category;
         if (filters.period) params.period = filters.period;
         if (filters.search) params.search = filters.search;
-    
-        const response = await axios.get('/api/budgets', { params });
+
+        // First get the progress data for all budgets (only active ones)
+        const progressResponse = await axios.get('/api/budgets/progress');
         
-        // Check if budgets have progress data, if not, fetch it
-        let budgetsWithProgress = response.data.budgets;
+        // Then get the regular paginated budget list with filters
+        const budgetsResponse = await axios.get('/api/budgets', { params });
         
-        // If budgets don't have progress data, fetch it separately
-        if (budgetsWithProgress.length > 0 && !budgetsWithProgress[0].progress) {
-          const progressPromises = budgetsWithProgress.map(async (budget) => {
-            try {
-              const progressResponse = await axios.get(`/api/budgets/${budget._id}/progress`);
-              return {
-                ...budget,
-                progress: {
-                  percentageSpent: progressResponse.data.progress.percentageSpent,
-                  totalSpent: progressResponse.data.progress.totalSpent,
-                  remaining: progressResponse.data.progress.remaining,
-                  isOverBudget: progressResponse.data.progress.isOverBudget
-                }
-              };
-            } catch (err) {
-              console.error(`Error fetching progress for budget ${budget._id}:`, err);
-              return {
-                ...budget,
-                progress: { percentageSpent: 0, totalSpent: 0, remaining: budget.amount, isOverBudget: false }
-              };
+        // Create a map of budget progress data by budget ID
+        const progressMap = {};
+        if (Array.isArray(progressResponse.data)) {
+          progressResponse.data.forEach(item => {
+            if (item.budget && item.budget._id && item.progress) {
+              progressMap[item.budget._id] = item.progress;
             }
           });
-          
-          budgetsWithProgress = await Promise.all(progressPromises);
         }
+        
+        // Add progress data to each budget
+        const budgetsWithProgress = budgetsResponse.data.budgets.map(budget => {
+          return {
+            ...budget,
+            progress: progressMap[budget._id] || { percentageSpent: 0, totalSpent: 0, remaining: budget.amount, isOverBudget: false }
+          };
+        });
         
         setBudgets(budgetsWithProgress);
         setPagination({
           ...pagination,
-          total: response.data.pagination.total
+          total: budgetsResponse.data.pagination.total
         });
       } catch (err) {
         console.error('Error fetching budgets:', err);
@@ -260,45 +253,44 @@ const BudgetList = () => {
         </Box>
       </Box>
 
+
+
       {/* Budget Usage Overview Chart */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Budget Usage Overview
-        </Typography>
-        {budgets.length > 0 ? (
-          <ResponsiveContainer width="100%" height={Math.max(300, budgets.length * 50)}>
-            <BarChart
-              layout="vertical"
-              data={budgets.map(budget => ({
-                name: budget.name,
-                spent: budget.progress ? Math.min(budget.progress.percentageSpent || 0, 100) : 0,
-                remaining: budget.progress ? Math.max(0, 100 - (budget.progress.percentageSpent || 0)) : 100
-              }))}
-              margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
-            >
-              <XAxis type="number" domain={[0, 100]} unit="%" />
-              <YAxis dataKey="name" type="category" width={120} />
-              <Tooltip 
-                formatter={(value) => `${value.toFixed(1)}%`}
-                labelFormatter={(name) => `Budget: ${name}`}
-              />
-              <Legend />
-              <Bar dataKey="remaining" stackId="a" fill="#4caf50" name="Remaining" />
-              <Bar dataKey="spent" stackId="a" fill="#f44336" name="Spent" />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body1" color="textSecondary">
-              No budget data available to display
-            </Typography>
-          </Box>
-        )}
-      </Paper>
-
-
-
-
+  <Typography variant="h6" gutterBottom>
+    Budget Usage Overview
+  </Typography>
+  {budgets.length > 0 ? (
+    <ResponsiveContainer width="100%" height={Math.max(300, budgets.length * 50)}>
+      <BarChart
+        layout="vertical"
+        data={budgets.map(budget => ({
+          name: budget.name,
+          spent: budget.progress ? Math.min(budget.progress.percentageSpent || 0, 100) : 0,
+          remaining: budget.progress ? Math.max(0, 100 - (budget.progress.percentageSpent || 0)) : 100
+        }))}
+        margin={{ top: 20, right: 30, left: 30, bottom: 20 }}
+      >
+        <XAxis type="number" domain={[0, 100]} unit="%" />
+        <YAxis dataKey="name" type="category" width={120} />
+        <Tooltip 
+          formatter={(value) => `${value.toFixed(1)}%`}
+          labelFormatter={(name) => `Budget: ${name}`}
+        />
+        <Legend />
+        {/* Reordered Bars: Spent comes first, then Remaining */}
+        <Bar dataKey="spent" stackId="a" fill="#b00020" name="Spent" />
+        <Bar dataKey="remaining" stackId="a" fill="#2e7d32" name="Remaining" />
+      </BarChart>
+    </ResponsiveContainer>
+  ) : (
+    <Box sx={{ p: 3, textAlign: 'center' }}>
+      <Typography variant="body1" color="textSecondary">
+        No budget data available to display
+      </Typography>
+    </Box>
+  )}
+</Paper>
 
 
 
@@ -407,7 +399,7 @@ const BudgetList = () => {
                 <TableCell align="right">Amount</TableCell>
                 <TableCell>Progress</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell align="center">Info</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -465,30 +457,13 @@ const BudgetList = () => {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" sx={{ display: 'flex', justifyContent: 'center' }}>
                       <IconButton
                         component={RouterLink}
                         to={`/budgets/${budget._id}`}
                         size="small"
-                        sx={{ mr: 1 }}
                       >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        component={RouterLink}
-                        to={`/budgets/${budget._id}/edit`}
-                        size="small"
-                        color="primary"
-                        sx={{ mr: 1 }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleDeleteBudget(budget._id)}
-                        size="small"
-                        color="error"
-                      >
-                        <DeleteIcon />
+                        <SearchIcon />
                       </IconButton>
                     </TableCell>
                   </TableRow>
