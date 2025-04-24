@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Expense = require('../models/expense.model');
 const Category = require('../models/category.model');
+const Budget = require('../models/budget.model');
 
 /**
  * Get all expenses for the current user
@@ -193,7 +194,8 @@ exports.updateExpense = async (req, res) => {
       receipt,
       isRecurring,
       recurringFrequency,
-      tags
+      tags,
+      budget
     } = req.body;
     
     // If category is being updated, verify it exists and belongs to user
@@ -220,7 +222,8 @@ exports.updateExpense = async (req, res) => {
         receipt,
         isRecurring,
         recurringFrequency,
-        tags
+        tags,
+        budget: req.body.budget // Assuming budget is part of the request body
       },
       { new: true }
     ).populate('category', 'name icon color');
