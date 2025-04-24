@@ -771,26 +771,45 @@ const Dashboard = () => {
                 Spending Trends
             </Typography>
             <Box sx={{ flex: 1, position: 'relative' }}>
-                <Line data={prepareLineChartData()} options={{ 
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top',
-                      labels: {
-                        usePointStyle: true,
-                        boxWidth: 10,
-                        boxHeight: 10,
-                        padding: 20,
-                        font: {
-                          size: 12
-                        }
-                      }
-                    },
-                    title: {
-                      display: false
-                    }
-                  }
-                }} />
+            <Line data={prepareLineChartData()} options={{ 
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+      labels: {
+        usePointStyle: true,
+        boxWidth: 10,
+        boxHeight: 10,
+        padding: 20,
+        font: {
+          size: 12
+        },
+        color: theme.palette.text.primary // Use theme text color for legend
+      }
+    },
+    title: {
+      display: false
+    }
+  },
+  scales: {
+    x: {
+      ticks: {
+        color: theme.palette.text.primary // Theme-aware text color for x-axis
+      },
+      grid: {
+        color: theme.palette.divider // Theme-aware grid color
+      }
+    },
+    y: {
+      ticks: {
+        color: theme.palette.text.primary // Theme-aware text color for y-axis
+      },
+      grid: {
+        color: theme.palette.divider // Theme-aware grid color
+      }
+    }
+  }
+}} />
             </Box>
             </Paper>
         </Grid>
@@ -800,43 +819,45 @@ const Dashboard = () => {
       Expenses by Category
     </Typography>
     <Box sx={{ flex: 1, position: 'relative' }}>
-      <Pie 
-        data={preparePieChartData()} 
-        options={{ 
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                usePointStyle: true,
-                boxWidth: 10,
-                boxHeight: 10,
-                padding: 20,
-                font: {
-                  size: 12
-                }
-              }
-            },
-            title: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  let label = context.label || '';
-                  if (label) {
-                    label += ': ';
-                  }
-                  if (context.parsed !== null) {
-                    label += '$' + context.parsed.toFixed(2);
-                  }
-                  return label;
-                }
-              }
+    <Pie 
+  data={preparePieChartData()} 
+  options={{ 
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          boxWidth: 10,
+          boxHeight: 10,
+          padding: 20,
+          font: {
+            size: 12
+          },
+          color: theme.palette.text.primary // Use theme text color for legend
+        }
+      },
+      title: {
+        display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            let label = context.label || '';
+            if (label) {
+              label += ': ';
             }
+            if (context.parsed !== null) {
+              label += '$' + context.parsed.toFixed(2);
+            }
+            return label;
           }
-        }} 
-      />
+        }
+      }
+    }
+  }} 
+/>
+
     </Box>
   </Paper>
 </Grid>
