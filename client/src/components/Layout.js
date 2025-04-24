@@ -15,7 +15,8 @@ import {
   Divider,
   IconButton,
   useMediaQuery,
-  useTheme
+  useTheme as useMuiTheme,
+  Tooltip
 } from '@mui/material';
 import { 
   Dashboard as DashboardIcon,
@@ -24,18 +25,22 @@ import {
   AccountBalance as BudgetIcon,
   Settings as SettingsIcon,
   Menu as MenuIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const drawerWidth = 240;
 
 const Layout = () => {
   const { logout, user } = useAuth();
+  const { mode, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleDrawerToggle = () => {
@@ -124,6 +129,11 @@ const Layout = () => {
           {menuItems.find(item => location.pathname.startsWith(item.path))?.text || 'Budget Tracker'}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
+              <IconButton color="inherit" onClick={toggleTheme} sx={{ mr: 1 }}>
+                {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+              </IconButton>
+            </Tooltip>
             {user && (
               <Typography variant="body2" sx={{ mr: 2 }}>
                 Welcome, {user.name}
