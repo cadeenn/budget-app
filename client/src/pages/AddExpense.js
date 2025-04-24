@@ -32,10 +32,12 @@ const AddExpense = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     category: '',
+    budget: '',
     date: new Date(),
     isRecurring: false,
     recurringFrequency: 'monthly',
@@ -48,7 +50,7 @@ const AddExpense = () => {
       try {
         const response = await axios.get('/api/categories');
         setCategories(response.data.categories || []);
-        
+
         // Set default category if available
         if (response.data.categories && response.data.categories.length > 0) {
           setFormData(prev => ({
@@ -62,18 +64,29 @@ const AddExpense = () => {
       }
     };
 
+    const fetchBudgets = async () => {
+      try {
+        const response = await axios.get('/api/budgets');
+        setBudgets(response.data.budgets || []);
+      } catch (err) {
+        console.error('Error fetching budgets:', err);
+      }
+    };
+
+
     fetchCategories();
+    fetchBudgets();
   }, []);
 
   const handleChange = (e) => {
     const { name, value, checked } = e.target;
     const newValue = name === 'isRecurring' ? checked : value;
-    
+
     setFormData({
       ...formData,
       [name]: newValue
     });
-    
+
     // Clear error for this field
     if (formErrors[name]) {
       setFormErrors({
@@ -88,7 +101,7 @@ const AddExpense = () => {
       ...formData,
       date
     });
-    
+
     // Clear date error
     if (formErrors.date) {
       setFormErrors({
@@ -100,52 +113,57 @@ const AddExpense = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.amount || isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
       errors.amount = 'Please enter a valid amount greater than 0';
     }
-    
+
     if (!formData.description.trim()) {
       errors.description = 'Description is required';
     }
-    
+
     if (!formData.category) {
       errors.category = 'Please select a category';
     }
     
+    if (!formData.budget) {
+      errors.budget = 'Please select a budget';
+    }
+
     if (!formData.date) {
       errors.date = 'Please select a date';
     }
-    
+
     if (formData.isRecurring && !formData.recurringFrequency) {
       errors.recurringFrequency = 'Please select a frequency for recurring expense';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await axios.post('/api/expenses', {
         amount: parseFloat(formData.amount),
         description: formData.description,
         category: formData.category,
+        budget: formData.budget,
         date: formData.date,
         isRecurring: formData.isRecurring,
         recurringFrequency: formData.isRecurring ? formData.recurringFrequency : null,
         notes: formData.notes
       });
-      
+
       setLoading(false);
       navigate('/expenses');
     } catch (err) {
@@ -170,15 +188,15 @@ const AddExpense = () => {
             Add New Expense
           </Typography>
         </Box>
-        
+
         <Divider sx={{ mb: 3 }} />
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
@@ -200,7 +218,7 @@ const AddExpense = () => {
                 helperText={formErrors.amount}
               />
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
@@ -219,7 +237,7 @@ const AddExpense = () => {
                 />
               </LocalizationProvider>
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 label="Description"
@@ -232,7 +250,7 @@ const AddExpense = () => {
                 helperText={formErrors.description}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <FormControl fullWidth required error={!!formErrors.category}>
                 <InputLabel>Category</InputLabel>
@@ -255,7 +273,34 @@ const AddExpense = () => {
                 )}
               </FormControl>
             </Grid>
-            
+
+            <Grid item xs={12}>
+              <FormControl fullWidth required error={!!formErrors.budget}>
+                <InputLabel>Budget</InputLabel>
+                <Select
+                  name="budget"
+                  value={formData.budget}
+                  onChange={handleChange}
+                  label="Budget"
+                >
+                  <MenuItem value="">Select Budget</MenuItem>
+                  {budgets.map(budget => (
+                    <MenuItem key={budget._id} value={budget._id}>
+                      {budget.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formErrors.budget && (
+                  <Typography variant="caption" color="error">
+                    {formErrors.budget}
+                  </Typography>
+                )}
+              </FormControl>
+            </Grid>
+
+
+
+
             <Grid item xs={12}>
               <FormControlLabel
                 control={
@@ -269,7 +314,7 @@ const AddExpense = () => {
                 label="This is a recurring expense"
               />
             </Grid>
-            
+
             {formData.isRecurring && (
               <Grid item xs={12}>
                 <FormControl fullWidth required error={!!formErrors.recurringFrequency}>
@@ -293,7 +338,7 @@ const AddExpense = () => {
                 </FormControl>
               </Grid>
             )}
-            
+
             <Grid item xs={12}>
               <TextField
                 label="Notes (Optional)"
@@ -305,7 +350,7 @@ const AddExpense = () => {
                 rows={3}
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
