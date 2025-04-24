@@ -457,7 +457,9 @@ const Dashboard = () => {
         };
       }
       
-      // For week view, ensure we have data for all 7 days
+      
+
+      // For week view, ensure data for all 7 days
       if (timeRange === 'week') {
         const now = new Date();
         const labels = [];
@@ -470,6 +472,7 @@ const Dashboard = () => {
           dateMap[item._id] = item.total;
           console.log(`Found expense for date ${item._id}: $${item.total}`);
         });
+
         
         // Create array of last 7 days
         for (let i = 6; i >= 0; i--) {
