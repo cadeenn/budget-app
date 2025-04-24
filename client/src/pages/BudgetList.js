@@ -269,7 +269,7 @@ const BudgetList = () => {
           spent: budget.progress ? Math.min(budget.progress.percentageSpent || 0, 100) : 0,
           remaining: budget.progress ? Math.max(0, 100 - (budget.progress.percentageSpent || 0)) : 100
         }))}
-        margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+        margin={{ top: 20, right: 30, left: 30, bottom: 20 }}
       >
         <XAxis type="number" domain={[0, 100]} unit="%" />
         <YAxis dataKey="name" type="category" width={120} />
