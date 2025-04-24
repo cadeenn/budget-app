@@ -351,14 +351,16 @@ exports.getExpenseStats = async (req, res) => {
     ]);
     
     // Log all expenses for debugging
-    const allExpenses = await Expense.find(matchStage).select('date amount description');
+    const allExpenses = await Expense.find(matchStage)
+  .select('date amount description isRecurring recurringFrequency');
     console.log('All expenses in date range:', allExpenses);
     console.log('Expenses by date:', expensesByDate);
     
     res.json({
       total: totalExpenses.length > 0 ? totalExpenses[0].total : 0,
       byCategory: expensesByCategoryWithDetails,
-      byDate: expensesByDate
+      byDate: expensesByDate,
+      allExpenses: allExpenses
     });
   } catch (error) {
     console.error('Get expense stats error:', error);

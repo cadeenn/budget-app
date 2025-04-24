@@ -135,7 +135,7 @@ const calculatePredictedIncome = (incomes, rangeStartDate, rangeEndDate) => {
         case 'daily': {
             const effectiveStartDate = max([occurrenceDate, interval.start]);
             if (effectiveStartDate <= interval.end) {
-                const daysCount = differenceInDays(interval.end, effectiveStartDate) + 1;
+                const daysCount = differenceInDays(interval.end, effectiveStartDate)+1;
                 if (daysCount > 0) {
                     predictedIncome += daysCount * income.amount;
                 }
@@ -189,6 +189,65 @@ const calculatePredictedIncome = (incomes, rangeStartDate, rangeEndDate) => {
   });
 
   return predictedIncome;
+};
+
+const calculatePredictedExpenses = (expenses, rangeStartDate, rangeEndDate) => {
+  let predictedExpense = 0;
+  const interval = { start: rangeStartDate, end: rangeEndDate };
+
+  expenses.forEach(expense => {
+    // Ensure date is a Date object
+    const expenseDate = expense.date instanceof Date ? expense.date : parseISO(expense.date);
+
+    if (!expense.isRecurring) {
+      // Only add non-recurring expenses if they fall within the interval
+      if (isWithinInterval(expenseDate, interval)) {
+        predictedExpense += expense.amount;
+      }
+    } else {
+      // Use the later of the expense date or range start as the effective start
+      const effectiveStart = expenseDate < rangeStartDate ? rangeStartDate : expenseDate;
+      let occurrences = 0;
+
+      switch(expense.recurringFrequency) {
+        case 'daily': {
+          // Number of days between the effectiveStart and rangeEndDate, inclusive
+          const days = differenceInDays(rangeEndDate, effectiveStart) + 1;
+          occurrences = days > 0 ? days : 0;
+          break;
+        }
+        case 'weekly': {
+          let current = effectiveStart;
+          while (current <= rangeEndDate) {
+            occurrences++;
+            current = addWeeks(current, 1);
+          }
+          break;
+        }
+        case 'monthly': {
+          let current = effectiveStart;
+          while (current <= rangeEndDate) {
+            occurrences++;
+            current = addMonths(current, 1);
+          }
+          break;
+        }
+        case 'yearly': {
+          let current = effectiveStart;
+          while (current <= rangeEndDate) {
+            occurrences++;
+            current = addYears(current, 1);
+          }
+          break;
+        }
+        default:
+          occurrences = 1;
+      }
+      predictedExpense += expense.amount * occurrences;
+    }
+  });
+
+  return predictedExpense;
 };
 
 
@@ -289,13 +348,24 @@ const Dashboard = () => {
           0
         );
 
-        // Get total expenses for the period from stats
-        const totalExpenses = statsResponse.data.total || 0;
+        // Fetching stats from the API:
+        const statsResponseExpenses = await axios.get('/api/expenses/stats', {
+          params: { startDate: formattedStartDate, endDate: formattedEndDate }
+        });
 
+
+        // Calculate predicted expense total 
+        const predictedExpenseTotal = calculatePredictedExpenses(
+          statsResponseExpenses.data.allExpenses || [], 
+          rangeStartDate, 
+          rangeEndDate
+        );
+
+        // And then update summaryData accordingly:
         setSummaryData({
-          balance: totalIncome - totalExpenses,
+          balance: totalIncome - predictedExpenseTotal,
           income: predictedIncome,
-          expenses: totalExpenses
+          expenses: predictedExpenseTotal
         });
 
         // Combine and sort recent transactions for the list
