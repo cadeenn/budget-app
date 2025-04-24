@@ -216,7 +216,6 @@ exports.updateExpense = async (req, res) => {
         description,
         date,
         category,
-        paymentMethod,
         location,
         receipt,
         isRecurring,
