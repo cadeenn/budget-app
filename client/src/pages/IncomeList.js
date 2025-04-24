@@ -23,7 +23,8 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Divider
+  Divider,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,6 +49,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 const IncomeList = () => {
   const { user } = useAuth();
+  const theme = useTheme(); // Add theme hook
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [incomes, setIncomes] = useState([]);
@@ -268,6 +270,81 @@ const IncomeList = () => {
         </Alert>
       )}
 
+      {/* Add Pie Chart with updated legend text color */}
+{incomeBySource.length > 0 && (
+  <Paper sx={{ p: 2, mb: 3 }}>
+    <Box sx={{ 
+      position: 'relative',
+      borderBottom: 1, 
+      borderColor: 'divider', 
+      mb: 2,
+      pb: 1
+    }}>
+      {/* Title on the left */}
+      <Typography 
+        component="h2" 
+        variant="h6" 
+        color="text.primary"
+        sx={{ 
+          position: 'absolute',
+          left: 0,
+          top: 'calc(50% - 3px)', // Adjusted to move title slightly higher
+          transform: 'translateY(-50%)',
+          fontSize: '1.1rem'
+        }}
+      >
+        Income by Source
+      </Typography>
+      
+      {/* Tabs centered in the container */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center',
+        width: '100%'
+      }}>
+        <Tabs value={timeRange} onChange={(_, newValue) => setTimeRange(newValue)}>
+          <Tab label="Week" value="week" />
+          <Tab label="Month" value="month" />
+          <Tab label="Year" value="year" />
+        </Tabs>
+      </Box>
+    </Box>
+    
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ width: '100%', maxWidth: '600px' }}>
+        <Box sx={{ height: 300, position: 'relative', display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ width: '100%', maxWidth: '500px', height: '100%' }}>
+            <Pie 
+              data={preparePieChartData()}
+              options={{
+                maintainAspectRatio: false,
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'right',
+                    labels: {
+                      // Make legend text use theme color for dark mode compatibility
+                      color: theme.palette.text.primary
+                    }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        const label = context.label || '';
+                        const value = context.raw || 0;
+                        return `${label}: $${value.toFixed(2)}`;
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+          </Box>
+        </Box>
+      </Box>
+    </Box>
+  </Paper>
+)}
       {showFilters && (
         <Paper sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
@@ -354,52 +431,6 @@ const IncomeList = () => {
         </Paper>
       )}
 
-      {/* Add Pie Chart */}
-      {incomeBySource.length > 0 && (
-  <Paper sx={{ p: 2, mb: 3 }}>
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <Box sx={{ width: '100%', maxWidth: '600px' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, display: 'flex', justifyContent: 'center' }}>
-          <Tabs value={timeRange} onChange={(_, newValue) => setTimeRange(newValue)} centered>
-            <Tab label="Week" value="week" />
-            <Tab label="Month" value="month" />
-            <Tab label="Year" value="year" />
-          </Tabs>
-        </Box>
-        <Typography component="h2" variant="h6" color="primary" gutterBottom align="center">
-          Income by Source
-        </Typography>
-        <Box sx={{ height: 300, position: 'relative', display: 'flex', justifyContent: 'center' }}>
-          <Box sx={{ width: '100%', maxWidth: '500px', height: '100%' }}>
-            <Pie 
-              data={preparePieChartData()}
-              options={{
-                maintainAspectRatio: false,
-                responsive: true,
-                plugins: {
-                  legend: {
-                    position: 'right'
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: function (context) {
-                        const label = context.label || '';
-                        const value = context.raw || 0;
-                        return `${label}: $${value.toFixed(2)}`;
-                      }
-                    }
-                  }
-                }
-              }}
-            />
-          </Box>
-        </Box>
-      </Box>
-    </Box>
-  </Paper>
-)}
-
-
       <Paper>
         <TableContainer>
           <Table>
@@ -434,7 +465,19 @@ const IncomeList = () => {
                         />
                       )}
                     </TableCell>
-                    <TableCell>{income.source}</TableCell>
+                    <TableCell>
+                      {/* Add a Chip for income source similar to expense category */}
+                      <Chip 
+                        label={income.source || 'Unknown'} 
+                        size="small"
+                        sx={{ 
+                          backgroundColor: '#4caf50', // Default green for income sources
+                          // Use theme.palette.text.primary for text color to support dark mode
+                          color: theme.palette.text.primary,
+                          fontWeight: 'medium'
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>{income.description}</TableCell>
                     <TableCell align="right" sx={{ color: 'success.main', fontWeight: 'bold' }}>
                     {`+$${Math.abs(income.amount).toFixed(2)}`}
@@ -469,4 +512,4 @@ const IncomeList = () => {
   );
 };
 
-export default IncomeList; 
+export default IncomeList;
