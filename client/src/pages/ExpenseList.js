@@ -25,7 +25,8 @@ import {
   Alert,
   Divider,
   Tabs,
-  Tab
+  Tab,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -58,6 +59,7 @@ ChartJS.register(
 
 const ExpenseList = () => {
   const { user } = useAuth();
+  const theme = useTheme(); // Add theme hook
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expenses, setExpenses] = useState([]);
@@ -172,7 +174,7 @@ const ExpenseList = () => {
     fetchExpenses();
   }, [pagination.page, pagination.limit, filters]);
 
-  // Same function as in Dashboard to prepare pie chart data
+  // Modified preparePieChartData function to match the income list format
   const preparePieChartData = () => {
     if (!expenseStats || !expenseStats.byCategory) {
       return {
@@ -193,6 +195,7 @@ const ExpenseList = () => {
         {
           data: expenseStats.byCategory.map(item => item.total),
           backgroundColor: expenseStats.byCategory.map(item => item.category.color),
+          borderColor: '#fff',
           borderWidth: 1
         }
       ]
@@ -307,146 +310,175 @@ const ExpenseList = () => {
         </Alert>
       )}
 
-      {/* Add Pie Chart Here - Full Width Paper */}
-      <Paper sx={{ mb: 3 }}>
-        {showFilters && (
-          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
-            <Typography variant="h6" gutterBottom>
-              Filters
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  label="Start Date"
-                  type="date"
-                  name="startDate"
-                  value={filters.startDate}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  label="End Date"
-                  type="date"
-                  name="endDate"
-                  value={filters.endDate}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    name="category"
-                    value={filters.category}
-                    onChange={handleFilterChange}
-                    label="Category"
-                  >
-                    <MenuItem value="">All Categories</MenuItem>
-                    {Array.isArray(categories) && categories.map(category => (
-  <MenuItem key={category._id} value={category._id}>
-    {category.name}
-  </MenuItem>
-))}
-
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  label="Search"
-                  name="search"
-                  value={filters.search}
-                  onChange={handleFilterChange}
-                  fullWidth
-                  InputProps={{
-                    endAdornment: (
-                      <SearchIcon color="action" />
-                    )
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  label="Min Amount"
-                  type="number"
-                  name="minAmount"
-                  value={filters.minAmount}
-                  onChange={handleFilterChange}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  label="Max Amount"
-                  type="number"
-                  name="maxAmount"
-                  value={filters.maxAmount}
-                  onChange={handleFilterChange}
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={12} md={6}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<ClearIcon />}
-                    onClick={handleClearFilters}
-                  >
-                    Clear Filters
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-
-        {/* Pie Chart with Centered Content */}
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Box sx={{ width: '100%', maxWidth: '600px' }}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, display: 'flex', justifyContent: 'center' }}>
-              <Tabs value={timeRange} onChange={handleTimeRangeChange} centered>
-                <Tab label="Week" value="week" />
-                <Tab label="Month" value="month" />
-                <Tab label="Year" value="year" />
-              </Tabs>
-            </Box>
-            <Typography component="h2" variant="h6" color="primary" gutterBottom align="center">
-              Expenses by Category
-            </Typography>
-            <Box sx={{ height: 300, position: 'relative', display: 'flex', justifyContent: 'center' }}>
-              <Box sx={{ width: '100%', maxWidth: '500px', height: '100%' }}>
-                <Pie 
-                  data={preparePieChartData()} 
-                  options={{ 
-                    maintainAspectRatio: false,
-                    plugins: {
-                      tooltip: {
-                        callbacks: {
-                          label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                              label += ': ';
-                            }
-                            if (context.parsed !== null) {
-                              label += '$' + context.parsed.toFixed(2);
-                            }
-                            return label;
-                          }
-                        }
+{/* Modified Pie Chart Section */}
+{expenseStats && expenseStats.byCategory && expenseStats.byCategory.length > 0 && (
+  <Paper sx={{ p: 2, mb: 3 }}>
+    <Box sx={{ 
+      position: 'relative',
+      borderBottom: 1, 
+      borderColor: 'divider', 
+      mb: 2,
+      pb: 1
+    }}>
+      {/* Title on the left */}
+      <Typography 
+        component="h2" 
+        variant="h6" 
+        color="text.primary"
+        sx={{ 
+          position: 'absolute',
+          left: 0,
+          top: 'calc(50% - 3px)', // Adjusted to move title slightly higher
+          transform: 'translateY(-50%)',
+          fontSize: '1.1rem'
+        }}
+      >
+        Expenses by Category
+      </Typography>
+      
+      {/* Tabs centered in the container */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center',
+        width: '100%'
+      }}>
+        <Tabs value={timeRange} onChange={handleTimeRangeChange}>
+          <Tab label="Week" value="week" />
+          <Tab label="Month" value="month" />
+          <Tab label="Year" value="year" />
+        </Tabs>
+      </Box>
+    </Box>
+    
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ width: '100%', maxWidth: '600px' }}>
+        <Box sx={{ height: 300, position: 'relative', display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ width: '100%', maxWidth: '500px', height: '100%' }}>
+            <Pie 
+              data={preparePieChartData()} 
+              options={{ 
+                maintainAspectRatio: false,
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'right',
+                    labels: {
+                      // Make legend text use theme color for dark mode compatibility
+                      color: theme.palette.text.primary
+                    }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        const label = context.label || '';
+                        const value = context.raw || 0;
+                        return `${label}: $${value.toFixed(2)}`;
                       }
                     }
-                  }} 
-                />
-              </Box>
-            </Box>
+                  }
+                }
+              }} 
+            />
           </Box>
         </Box>
-      </Paper>
+      </Box>
+    </Box>
+  </Paper>
+)}
+      {showFilters && (
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Filters
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Start Date"
+                type="date"
+                name="startDate"
+                value={filters.startDate}
+                onChange={handleFilterChange}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="End Date"
+                type="date"
+                name="endDate"
+                value={filters.endDate}
+                onChange={handleFilterChange}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  name="category"
+                  value={filters.category}
+                  onChange={handleFilterChange}
+                  label="Category"
+                >
+                  <MenuItem value="">All Categories</MenuItem>
+                  {Array.isArray(categories) && categories.map(category => (
+                    <MenuItem key={category._id} value={category._id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Search"
+                name="search"
+                value={filters.search}
+                onChange={handleFilterChange}
+                fullWidth
+                InputProps={{
+                  endAdornment: (
+                    <SearchIcon color="action" />
+                  )
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Min Amount"
+                type="number"
+                name="minAmount"
+                value={filters.minAmount}
+                onChange={handleFilterChange}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                label="Max Amount"
+                type="number"
+                name="maxAmount"
+                value={filters.maxAmount}
+                onChange={handleFilterChange}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={12} md={6}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<ClearIcon />}
+                  onClick={handleClearFilters}
+                >
+                  Clear Filters
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
 
       <Paper>
         <TableContainer>
@@ -487,9 +519,11 @@ const ExpenseList = () => {
                       <Chip 
                         label={expense.category ? expense.category.name : 'Unknown'} 
                         size="small"
-                        style={{ 
+                        sx={{ 
                           backgroundColor: expense.category ? expense.category.color : '#ccc',
-                          color: '#fff'
+                          // Use theme.palette.text.primary for text color to support dark mode
+                          color: theme.palette.text.primary,
+                          fontWeight: 'medium'
                         }}
                       />
                     </TableCell>
