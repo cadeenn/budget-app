@@ -799,7 +799,7 @@ const Dashboard = () => {
                         primary={
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <Typography component="span" variant="body1">
-                                {transaction.description || transaction.source}
+                              {transaction.type === 'income' ? transaction.source : transaction.description}
                             </Typography>
                             {transaction.isRecurring && (
                                 <Chip
