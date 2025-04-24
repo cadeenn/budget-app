@@ -74,14 +74,14 @@ const Layout = () => {
             onClick={isMobile ? handleDrawerToggle : undefined}
             sx={{
               '&.Mui-selected': {
-                backgroundColor: 'primary.light',
+                backgroundColor: 'primary.main',
                 '&:hover': {
-                  backgroundColor: 'primary.light',
+                  backgroundColor: 'primary.main',
                 },
               },
             }}
           >
-            <ListItemIcon sx={{ color: location.pathname === item.path ? 'primary.main' : 'inherit' }}>
+            <ListItemIcon sx={{ color: location.pathname === item.path ? 'white' : 'inherit' }}>
               {item.icon}
             </ListItemIcon>
             <ListItemText primary={item.text} />
