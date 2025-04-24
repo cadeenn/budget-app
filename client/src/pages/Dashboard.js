@@ -28,7 +28,8 @@ import {
   Tab,
   Tabs,
   Chip,
-  LinearProgress
+  LinearProgress,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -195,6 +196,7 @@ const calculatePredictedIncome = (incomes, rangeStartDate, rangeEndDate) => {
 const Dashboard = () => {
   // Removed useAuth reference if present
   // const { user } = useAuth();
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expenseStats, setExpenseStats] = useState(null);
@@ -595,9 +597,10 @@ const Dashboard = () => {
               display: 'flex',
               flexDirection: 'column',
               height: 120,
-              bgcolor: '#f5f5f5',
+              bgcolor: theme => theme.palette.mode === 'dark' ? 'background.paper' : '#f5f5f5',
               position: 'relative',
               overflow: 'hidden',
+              boxShadow: 2,
             }}
           >
             <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.1 }}>
@@ -607,7 +610,7 @@ const Dashboard = () => {
               {/* Title */}
               Current Balance
             </Typography>
-            <Typography component="p" variant="h4">
+            <Typography component="p" variant="h4" sx={{ color: 'text.primary' }}>
               {/* Display calculated balance */}
               ${summaryData.balance.toFixed(2)}
             </Typography>
@@ -626,24 +629,25 @@ const Dashboard = () => {
               display: 'flex',
               flexDirection: 'column',
               height: 120,
-              bgcolor: '#e8f5e9',
+              bgcolor: theme => theme.palette.mode === 'dark' ? 'success.dark' : '#e8f5e9',
               position: 'relative',
               overflow: 'hidden',
+              boxShadow: 2,
             }}
           >
             <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.1 }}>
               <IncomeIcon sx={{ fontSize: 100 }} />
             </Box>
             {/* Title */}
-            <Typography component="h2" variant="h6" color="success.main" gutterBottom>
+            <Typography component="h2" variant="h6" color={theme => theme.palette.mode === 'dark' ? 'white' : 'success.main'} gutterBottom>
               Income
             </Typography>
             {/* Display predicted income from summaryData */}
-            <Typography component="p" variant="h4">
+            <Typography component="p" variant="h4" sx={{ color: theme => theme.palette.mode === 'dark' ? 'white' : 'text.primary' }}>
               ${summaryData.income.toFixed(2)}
             </Typography>
             {/*  */}
-            <Typography color="text.secondary" sx={{ flex: 1 }}>
+            <Typography color={theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} sx={{ flex: 1 }}>
                 
             </Typography>
           </Paper>
@@ -657,22 +661,23 @@ const Dashboard = () => {
                display: 'flex',
                flexDirection: 'column',
                height: 120,
-               bgcolor: '#ffebee',
+               bgcolor: theme => theme.palette.mode === 'dark' ? 'error.dark' : '#ffebee',
                position: 'relative',
                overflow: 'hidden',
+               boxShadow: 2,
              }}
            >
              <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.1 }}>
                <ExpenseIcon sx={{ fontSize: 100 }} />
              </Box>
-             <Typography component="h2" variant="h6" color="error.main" gutterBottom>
+             <Typography component="h2" variant="h6" color={theme => theme.palette.mode === 'dark' ? 'white' : 'error.main'} gutterBottom>
                Expenses
              </Typography>
-             <Typography component="p" variant="h4">
+             <Typography component="p" variant="h4" sx={{ color: theme => theme.palette.mode === 'dark' ? 'white' : 'text.primary' }}>
                ${summaryData.expenses.toFixed(2)}
              </Typography>
              {/*  */}
-             <Typography color="text.secondary" sx={{ flex: 1 }}>
+             <Typography color={theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'} sx={{ flex: 1 }}>
                 
              </Typography>
            </Paper>
