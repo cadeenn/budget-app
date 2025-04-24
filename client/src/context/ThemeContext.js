@@ -22,9 +22,9 @@ export const ThemeProvider = ({ children }) => {
         palette: {
           mode,
           primary: {
-            main: '#6200ee',
-            light: '#9e47ff',
-            dark: '#0400ba',
+            main: '#00a86b',
+            light: '#4dda9a',
+            dark: '#007849',
             contrastText: '#ffffff',
           },
           secondary: {
