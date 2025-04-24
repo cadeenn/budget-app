@@ -210,7 +210,13 @@ const AddBudget = () => {
                 fullWidth
                 required
                 type="number"
-                inputProps={{ step: "0.01", min: "0.01" }}
+                inputProps={{ step: "0.01", min: "0.01", 
+                  onKeyDown: (e) => {
+                    if (["e", "E", "-", "+"].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">$</InputAdornment>
