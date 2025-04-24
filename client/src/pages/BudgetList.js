@@ -40,6 +40,16 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 
+import {
+  ResponsiveContainer,
+  BarChart,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  Bar,
+} from 'recharts';
+
 const BudgetList = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -242,6 +252,47 @@ const BudgetList = () => {
           </Button>
         </Box>
       </Box>
+
+
+
+      {/* Budget Usage Overview Chart */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Budget Usage Overview
+        </Typography>
+        {budgets.length > 0 ? (
+          <ResponsiveContainer width="100%" height={Math.max(300, budgets.length * 50)}>
+            <BarChart
+              layout="vertical"
+              data={budgets.map(budget => ({
+                name: budget.name,
+                spent: budget.progress ? Math.min(budget.progress.percentageSpent || 0, 100) : 0,
+                remaining: budget.progress ? Math.max(0, 100 - (budget.progress.percentageSpent || 0)) : 100
+              }))}
+              margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+            >
+              <XAxis type="number" domain={[0, 100]} unit="%" />
+              <YAxis dataKey="name" type="category" width={120} />
+              <Tooltip 
+                formatter={(value) => `${value.toFixed(1)}%`}
+                labelFormatter={(name) => `Budget: ${name}`}
+              />
+              <Legend />
+              <Bar dataKey="remaining" stackId="a" fill="#4caf50" name="Remaining" />
+              <Bar dataKey="spent" stackId="a" fill="#f44336" name="Spent" />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body1" color="textSecondary">
+              No budget data available to display
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+
+
+
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
